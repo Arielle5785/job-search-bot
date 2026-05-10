@@ -222,6 +222,10 @@ def passes_filters(job: dict) -> bool:
     # Gate 4 (soft) — SaaS/Fintech badge
     job["saas_signal"] = any(kw in full_text for kw in COMPANY_TYPE_INCLUDE)
 
+    # Gate 5 — date filter (3 working days max)
+    if not passes_date_filter(job):
+        return False
+
     return True
 
 
@@ -260,6 +264,76 @@ def make_job_id(job: dict) -> str:
     company = re.sub(r"\s+", " ", (job.get("company") or "").lower().strip())
     title   = re.sub(r"\s+", " ", (job.get("title")   or "").lower().strip())
     return hashlib.md5(f"{company}|{title}".encode()).hexdigest()
+
+# =============================================================================
+# 3b. DATE FILTER
+#     Parses relative dates from NBN (English) and SFS (Hebrew).
+#     Drops jobs older than 3 working days.
+#     Sources with no date (JobShop, LinkedIn) always pass.
+# =============================================================================
+
+def working_days_ago(n_calendar_days: int) -> bool:
+    """Return True if n_calendar_days corresponds to <= 3 working days ago."""
+    today = datetime.date.today()
+    count = 0
+    for i in range(1, n_calendar_days + 1):
+        day = today - datetime.timedelta(days=i)
+        if day.weekday() < 5:  # Mon-Fri
+            count += 1
+        if count > 3:
+            return False
+    return True
+
+
+def parse_relative_date(text: str) -> bool:
+    """
+    Returns True if the date string is within 3 working days.
+    Handles:
+      English: 'Posted X days ago', 'Posted X weeks ago', 'Posted today', 'Posted 1 day ago'
+      Hebrew:  'לפני X ימים', 'לפני X שבועות', 'לפני יום', 'היום'
+    Returns True (keep) if date cannot be parsed — better to over-include.
+    """
+    if not text:
+        return True
+
+    text = text.lower().strip()
+
+    # Today
+    if any(x in text for x in ['today', 'היום', 'just now', 'עכשיו']):
+        return True
+
+    # Yesterday
+    if any(x in text for x in ['yesterday', 'אתמול']):
+        return working_days_ago(1)
+
+    # Extract number
+    numbers = re.findall(r'\d+', text)
+    if not numbers:
+        # Hebrew: 'לפני יום' = 1 day, 'לפני שבוע' = 1 week
+        if 'יום' in text and 'ימים' not in text:
+            return working_days_ago(1)
+        if 'שבוע' in text and 'שבועות' not in text:
+            return working_days_ago(7)
+        return True  # can't parse — keep
+
+    n = int(numbers[0])
+
+    # Weeks
+    if any(x in text for x in ['week', 'שבוע', 'שבועות']):
+        return working_days_ago(n * 7)
+
+    # Months
+    if any(x in text for x in ['month', 'חודש', 'חודשים']):
+        return working_days_ago(n * 30)
+
+    # Days (default)
+    return working_days_ago(n)
+
+
+def passes_date_filter(job: dict) -> bool:
+    """Check job's posted_date field. If absent, pass through."""
+    return parse_relative_date(job.get("posted_date", ""))
+
 
 
 # =============================================================================
@@ -420,6 +494,10 @@ def fetch_startup_for_startup() -> list:
 
                     title = title_el.get_text(strip=True) if title_el else ""
 
+                    # Date: first span in the <p> under logo-title e.g. 'לפני 2 שבועות'
+                    date_el     = card.select_one("div.job-mini-card-logo-title p span:first-child")
+                    posted_date = date_el.get_text(strip=True) if date_el else ""
+
                     if title and url_full:
                         jobs.append({
                             "title":       title,
@@ -428,6 +506,7 @@ def fetch_startup_for_startup() -> list:
                             "url":         url_full,
                             "description": "",
                             "source":      SOURCE,
+                            "posted_date": posted_date,
                         })
                 except Exception:
                     continue
@@ -495,14 +574,19 @@ def fetch_nefesh_bnefesh() -> list:
 
             for card in cards[:40]:
                 try:
-                    title_el   = card.select_one("h3, h2, .position, [class*='title']")
-                    company_el = card.select_one(".company, [class*='company']")
-                    link_el    = card.find("a")
+                    title_el   = card.select_one("h3.job_listing-title, h3, h2")
+                    company_el = card.select_one(".job_listing-company strong, .company, [class*='company']")
+                    link_el    = card.select_one("a.job_listing-clickbox, a[href*='/job/']")
+                    date_el    = card.select_one("li.job_listing-date, .job_listing-date")
 
                     title   = title_el.get_text(strip=True)   if title_el   else ""
                     company = company_el.get_text(strip=True) if company_el else ""
                     href    = link_el["href"] if link_el and link_el.get("href") else ""
-                    url_full = href if href.startswith("http") else f"{BASE_URL}{href}"
+                    # Also try data-href on the card itself
+                    if not href:
+                        href = card.get("data-href", "")
+                    url_full    = href if href.startswith("http") else f"{BASE_URL}{href}"
+                    posted_date = date_el.get_text(strip=True) if date_el else ""
 
                     if title and href:
                         jobs.append({
@@ -512,6 +596,7 @@ def fetch_nefesh_bnefesh() -> list:
                             "url":         url_full,
                             "description": "",
                             "source":      SOURCE,
+                            "posted_date": posted_date,
                         })
                 except Exception:
                     continue
@@ -754,6 +839,10 @@ def build_email_html(new_jobs: list) -> str:
               &nbsp;&middot;&nbsp;
               <span style="background:{source_bg};padding:1px 7px;border-radius:3px;
                            font-size:11px;color:#444;">{source}</span>
+              {("&nbsp;&middot;&nbsp;<span style='color:#aaa;font-size:11px;'>" + job.get('posted_date','') + "</span>") if job.get('posted_date') else ""}
+            </div>
+            <div style="font-size:12px;color:#888;margin-top:3px;">
+              <a href="{job['url']}" style="color:#888;">{job['url']}</a>
             </div>
             {desc_html}
           </td>
