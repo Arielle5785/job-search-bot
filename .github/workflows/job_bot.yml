@@ -18,10 +18,14 @@ jobs:
           key: job-cache-${{ github.run_id }}
           restore-keys: job-cache-
       - name: Install dependencies
-        run: pip install requests beautifulsoup4 python-dotenv
+        run: pip install requests beautifulsoup4 python-dotenv selenium webdriver-manager
+      - name: Install Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
       - name: Run bot
         run: python job_search_automation.py
         env:
-          EMAIL_FROM:     ${{ secrets.EMAIL_FROM }}
-          EMAIL_TO:       ${{ secrets.EMAIL_TO }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
