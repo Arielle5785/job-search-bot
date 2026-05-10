@@ -1,0 +1,31 @@
+name: Job Search Bot
+on:
+  schedule:
+    - cron: '0 6 * * 1-5'
+  workflow_dispatch:
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Restore seen-jobs cache
+        uses: actions/cache@v4
+        with:
+          path: seen_jobs_cache.json
+          key: job-cache-${{ github.run_id }}
+          restore-keys: job-cache-
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4 python-dotenv selenium webdriver-manager
+      - name: Install Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+      - name: Run bot
+        run: python job_search_automation.py
+        env:
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
