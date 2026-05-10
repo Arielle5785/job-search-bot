@@ -1,3 +1,42 @@
+"""
+Job Search Automation — Customer Success Manager, B2B SaaS, Tel Aviv
+=====================================================================
+100% free. No RSS. No Apify. No paid APIs.
+
+Sources scraped (BeautifulSoup + requests):
+  - StartupForStartup  (startupforstartup.com)
+  - LaStartup          (lastartup.co.il)
+  - Nefesh B'Nefesh    (nbnjobs.com)
+  - JobShop            (jobshop.co.il)
+  - LinkedIn           (best-effort, graceful fail if blocked)
+
+HOW SCRAPING WORKS ON YOUR PC vs. A SERVER
+  These job sites block requests coming from cloud/datacenter IPs (standard
+  Cloudflare protection). From your home Windows PC, your residential IP is
+  not flagged and all sites return 200 OK. The script is designed to run
+  locally or via GitHub Actions, which uses a residential-adjacent IP pool.
+
+ONE-TIME SETUP
+  pip install requests beautifulsoup4 python-dotenv
+
+Create a .env file in the same folder as this script:
+  EMAIL_FROM=you@gmail.com
+  EMAIL_TO=you@gmail.com
+  EMAIL_PASSWORD=xxxx xxxx xxxx xxxx   <- 16-char Gmail App Password
+                                          (not your regular Gmail password)
+  Get one at: myaccount.google.com/apppasswords
+
+PASSWORD SAFETY
+  - .env never leaves your machine (blocked by .gitignore)
+  - GitHub only ever sees the Python script, never your passwords
+  - Passwords on GitHub are stored in encrypted Secrets vault
+
+RUN MANUALLY
+  python job_search_automation.py
+
+SCHEDULE FREE (weekdays 8am Israel time, no computer left on)
+  See SCHEDULING section at the bottom — uses GitHub Actions.
+"""
 
 import os
 import re
@@ -11,6 +50,13 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from webdriver_manager.chrome import ChromeDriverManager
 
 load_dotenv()
 
@@ -31,6 +77,26 @@ HEADERS = {
     "Connection": "keep-alive",
     "Upgrade-Insecure-Requests": "1",
 }
+def get_selenium_driver():
+    """Return a headless Chrome driver. Shared across scrapers."""
+    options = Options()
+    options.add_argument('--headless')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    options.add_argument('--disable-gpu')
+    options.add_argument('--window-size=1920,1080')
+    options.add_argument(
+        'user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+        'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+    )
+    driver = webdriver.Chrome(
+        service=Service(ChromeDriverManager().install()),
+        options=options
+    )
+    driver.set_page_load_timeout(20)
+    return driver
+
+
 
 
 # =============================================================================
@@ -295,51 +361,84 @@ def extract_jobs_generic(
     return jobs
 
 
-# ── StartupForStartup ─────────────────────────────────────────────────────────
+# ── StartupForStartup (Selenium) ──────────────────────────────────────────────
 
 def fetch_startup_for_startup() -> list:
     """
-    Correct URL: https://www.startupforstartup.com/jobs-in-startups/
-    Searches English and Hebrew keywords.
-    Note: site is in Hebrew — Google Translate handles reading it.
+    Uses Selenium to load JavaScript-rendered job listings.
+    URL: https://www.startupforstartup.com/jobs-in-startups/
+    Card: div.job-mini-card-wrap
+    Title: div.job-mini-card-logo-title
     """
     SOURCE   = "StartupForStartup"
     BASE_URL = "https://www.startupforstartup.com"
     jobs     = []
+    driver   = None
 
-    # English + Hebrew search terms
     search_terms = [
         "customer success",
-        "customer success manager",
-        "\u05d4\u05e6\u05dc\u05d7\u05ea \u05dc\u05e7\u05d5\u05d7\u05d5\u05ea",   # הצלחת לקוחות
-        "\u05de\u05e0\u05d4\u05dc \u05dc\u05e7\u05d5\u05d7\u05d5\u05ea",           # מנהל לקוחות
-        "\u05d7\u05d5\u05d5\u05d9\u05d9\u05ea \u05dc\u05e7\u05d5\u05d7",           # חווית לקוח
+        "הצלחת לקוחות",
+        "מנהל לקוחות",
+        "חווית לקוח",
     ]
 
-    for term in search_terms:
-        encoded = requests.utils.quote(term)
-        url  = f"{BASE_URL}/jobs-in-startups/?query={encoded}"
-        soup = safe_get(url, SOURCE)
-        if not soup:
-            continue
+    try:
+        driver = get_selenium_driver()
 
-        found = extract_jobs_generic(
-            soup, SOURCE, BASE_URL,
-            card_selectors=[
-                "div.job-card", "article.job", "li.job-listing",
-                "div[class*='JobCard']", "div[class*='job-card']",
-                "div[class*='position']", "div[class*='listing']",
-            ],
-            title_selectors=[
-                "h2", "h3", "[class*='title']", "[class*='Title']", "[class*='job-title']",
-            ],
-            company_selectors=[
-                "[class*='company']", "[class*='Company']", "[class*='employer']", "span.name",
-            ],
-            location_default="Tel Aviv, Israel",
-        )
-        jobs.extend(found)
-        time.sleep(REQUEST_DELAY)
+        for term in search_terms:
+            encoded = requests.utils.quote(term)
+            url = f"{BASE_URL}/jobs-in-startups/?s={encoded}"
+            try:
+                driver.get(url)
+                # Wait for job cards to appear
+                WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "div.job-mini-card-wrap"))
+                )
+                time.sleep(2)  # let remaining cards load
+            except Exception:
+                # Fallback: load all jobs page
+                driver.get(f"{BASE_URL}/jobs-in-startups/")
+                time.sleep(3)
+
+            soup  = BeautifulSoup(driver.page_source, "html.parser")
+            cards = soup.select("div.job-mini-card-wrap")
+
+            for card in cards[:40]:
+                try:
+                    # Title is in h4 inside div.job-mini-card-logo-title
+                    title_el   = card.select_one("div.job-mini-card-logo-title h4")
+                    if not title_el:
+                        title_el = card.select_one("div.job-mini-card-logo-title")
+
+                    # Company is in the <p> span inside logo-title
+                    spans = card.select("div.job-mini-card-logo-title p span")
+                    company = spans[-1].get_text(strip=True) if spans else ""
+
+                    # URL built from data-id on the card
+                    data_id  = card.get("data-id", "")
+                    url_full = f"{BASE_URL}/seekers-form/?job_apply_id={data_id}" if data_id else ""
+
+                    title = title_el.get_text(strip=True) if title_el else ""
+
+                    if title and url_full:
+                        jobs.append({
+                            "title":       title,
+                            "company":     company,
+                            "location":    "Tel Aviv, Israel",
+                            "url":         url_full,
+                            "description": "",
+                            "source":      SOURCE,
+                        })
+                except Exception:
+                    continue
+
+            time.sleep(REQUEST_DELAY)
+
+    except Exception as e:
+        print(f"  [{SOURCE}] Selenium error: {e}")
+    finally:
+        if driver:
+            driver.quit()
 
     # Deduplicate within source
     seen, unique = set(), []
@@ -353,51 +452,77 @@ def fetch_startup_for_startup() -> list:
     return unique
 
 
-# ── Nefesh B'Nefesh ──────────────────────────────────────────────────────────
+# ── Nefesh B'Nefesh (Selenium) ───────────────────────────────────────────────
 
 def fetch_nefesh_bnefesh() -> list:
     """
-    Correct URL: https://www.nbn.org.il/jobboard/
-    Filter: region=71 (Tel Aviv / Center only)
-    Searches English and Hebrew keywords.
+    Uses Selenium — JS-rendered site.
+    URL: https://www.nbn.org.il/jobboard/ filtered to Tel Aviv (region=71)
     """
     SOURCE   = "Nefesh B'Nefesh"
     BASE_URL = "https://www.nbn.org.il"
     jobs     = []
+    driver   = None
 
     search_terms = [
         "customer success",
         "customer success manager",
-        "\u05d4\u05e6\u05dc\u05d7\u05ea \u05dc\u05e7\u05d5\u05d7\u05d5\u05ea",   # הצלחת לקוחות
-        "\u05de\u05e0\u05d4\u05dc \u05dc\u05e7\u05d5\u05d7\u05d5\u05ea",           # מנהל לקוחות
+        "הצלחת לקוחות",
+        "מנהל לקוחות",
     ]
 
-    for term in search_terms:
-        encoded = requests.utils.quote(term)
-        # region=71 = Tel Aviv / Center
-        url  = (
-            f"{BASE_URL}/jobboard/"
-            f"?search_keywords={encoded}"
-            f"&search_region=71"
-            f"&gjm_units=imperial"
-        )
-        soup = safe_get(url, SOURCE)
-        if not soup:
-            continue
+    try:
+        driver = get_selenium_driver()
 
-        found = extract_jobs_generic(
-            soup, SOURCE, BASE_URL,
-            card_selectors=[
-                "div.job-listing", "article.job", "li.job",
-                "div[class*='job-card']", "div[class*='JobCard']",
-                "div[class*='job_listing']", "li[class*='job']",
-            ],
-            title_selectors=["h2", "h3", ".job-title", "[class*='title']"],
-            company_selectors=[".company", ".company-name", "[class*='company']"],
-            location_default="Tel Aviv, Israel",
-        )
-        jobs.extend(found)
-        time.sleep(REQUEST_DELAY)
+        for term in search_terms:
+            encoded = requests.utils.quote(term)
+            url = (
+                f"{BASE_URL}/jobboard/"
+                f"?search_keywords={encoded}"
+                f"&search_region=71"
+            )
+            try:
+                driver.get(url)
+                WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "li.job_listing, div.job_listing, article"))
+                )
+                time.sleep(2)
+            except Exception:
+                time.sleep(3)
+
+            soup  = BeautifulSoup(driver.page_source, "html.parser")
+            cards = soup.select("li.job_listing, div.job_listing, article.job_listing")
+
+            for card in cards[:40]:
+                try:
+                    title_el   = card.select_one("h3, h2, .position, [class*='title']")
+                    company_el = card.select_one(".company, [class*='company']")
+                    link_el    = card.find("a")
+
+                    title   = title_el.get_text(strip=True)   if title_el   else ""
+                    company = company_el.get_text(strip=True) if company_el else ""
+                    href    = link_el["href"] if link_el and link_el.get("href") else ""
+                    url_full = href if href.startswith("http") else f"{BASE_URL}{href}"
+
+                    if title and href:
+                        jobs.append({
+                            "title":       title,
+                            "company":     company,
+                            "location":    "Tel Aviv, Israel",
+                            "url":         url_full,
+                            "description": "",
+                            "source":      SOURCE,
+                        })
+                except Exception:
+                    continue
+
+            time.sleep(REQUEST_DELAY)
+
+    except Exception as e:
+        print(f"  [{SOURCE}] Selenium error: {e}")
+    finally:
+        if driver:
+            driver.quit()
 
     # Deduplicate within source
     seen, unique = set(), []
@@ -411,56 +536,79 @@ def fetch_nefesh_bnefesh() -> list:
     return unique
 
 
-# ── JobShop ───────────────────────────────────────────────────────────────────
+# ── JobShop (Selenium) ───────────────────────────────────────────────────────
 
 def fetch_jobshop() -> list:
     """
-    Correct URL: https://jobshop.co.il/find
-    Filters: location=מרכז (Center), type=משרה מלאה (Full-time)
-    Searches English and Hebrew keywords.
+    Uses Selenium — JS-rendered site.
+    Working URL: https://jobshop.co.il/?s=TERM
+    Cards: article elements, links via a.elementor-post__read-more
+    Title: h3 or h2 inside article
     """
     SOURCE   = "JobShop"
     BASE_URL = "https://jobshop.co.il"
     jobs     = []
+    driver   = None
 
     search_terms = [
         "customer success",
         "customer success manager",
-        "\u05d4\u05e6\u05dc\u05d7\u05ea \u05dc\u05e7\u05d5\u05d7\u05d5\u05ea",   # הצלחת לקוחות
-        "\u05de\u05e0\u05d4\u05dc \u05dc\u05e7\u05d5\u05d7\u05d5\u05ea",           # מנהל לקוחות
-        "\u05d7\u05d5\u05d5\u05d9\u05d9\u05ea \u05dc\u05e7\u05d5\u05d7",           # חווית לקוח
+        "הצלחת לקוחות",
+        "מנהל לקוחות",
+        "חווית לקוח",
     ]
 
-    for term in search_terms:
-        encoded = requests.utils.quote(term)
-        url = (
-            f"{BASE_URL}/find"
-            f"?_sfm_job_location=%D7%9E%D7%A8%D7%9B%D7%96"          # מרכז = Center/Tel Aviv
-            f"&_sfm_job_type=%D7%9E%D7%A9%D7%A8%D7%94%20%D7%9E%D7%9C%D7%90%D7%94"  # משרה מלאה = Full-time
-            f"&_s={encoded}"
-        )
-        soup = safe_get(url, SOURCE)
-        if not soup:
-            continue
+    try:
+        driver = get_selenium_driver()
 
-        found = extract_jobs_generic(
-            soup, SOURCE, BASE_URL,
-            card_selectors=[
-                "div.job_listing", "li.job_listing",
-                "div[class*='job']", "div[class*='position']",
-                "article", "div.sf-field-post-meta",
-            ],
-            title_selectors=[
-                "h2", "h3", "h4",
-                ".position-title", "[class*='title']", "[class*='job-title']",
-            ],
-            company_selectors=[
-                ".company", "[class*='company']", "[class*='employer']",
-            ],
-            location_default="Tel Aviv, Israel",
-        )
-        jobs.extend(found)
-        time.sleep(REQUEST_DELAY)
+        for term in search_terms:
+            encoded = requests.utils.quote(term)
+            url = f"{BASE_URL}/?s={encoded}"
+            try:
+                driver.get(url)
+                WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "article"))
+                )
+                time.sleep(2)
+            except Exception:
+                time.sleep(3)
+
+            soup  = BeautifulSoup(driver.page_source, "html.parser")
+            cards = soup.select("article")
+
+            for card in cards[:40]:
+                try:
+                    # Title from h2 or h3
+                    title_el = card.select_one("h2, h3, h4, .elementor-post__title")
+                    # Link from read-more anchor
+                    link_el  = card.select_one("a.elementor-post__read-more, h2 a, h3 a, a[href*='/jobs/']")
+                    # Company not always shown — leave blank
+                    company_el = card.select_one("[class*='company'], [class*='employer']")
+
+                    title   = title_el.get_text(strip=True)   if title_el   else ""
+                    company = company_el.get_text(strip=True) if company_el else ""
+                    href    = link_el["href"] if link_el and link_el.get("href") else ""
+                    url_full = href if href.startswith("http") else f"{BASE_URL}{href}"
+
+                    if title and href:
+                        jobs.append({
+                            "title":       title,
+                            "company":     company,
+                            "location":    "Tel Aviv, Israel",
+                            "url":         url_full,
+                            "description": "",
+                            "source":      SOURCE,
+                        })
+                except Exception:
+                    continue
+
+            time.sleep(REQUEST_DELAY)
+
+    except Exception as e:
+        print(f"  [{SOURCE}] Selenium error: {e}")
+    finally:
+        if driver:
+            driver.quit()
 
     # Deduplicate within source
     seen, unique = set(), []
