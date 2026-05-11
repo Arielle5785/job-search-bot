@@ -123,19 +123,9 @@ TITLE_VARIANTS = [
     "responsable customer success",
     "charge de succes client",
     "gestionnaire de succes client",
-    # Customer Care
-    "customer care manager",
-    "customer care lead",
-    "customer care director",
-    "head of customer care",
-    "vp customer care",
-    "customer care team lead",
-
     # Hebrew forms found on Israeli boards
     "\u05de\u05e0\u05d4\u05dc \u05d4\u05e6\u05dc\u05d7\u05ea \u05dc\u05e7\u05d5\u05d7\u05d5\u05ea",
     "\u05de\u05e0\u05d4\u05dc\u05ea \u05d4\u05e6\u05dc\u05d7\u05ea \u05dc\u05e7\u05d5\u05d7\u05d5\u05ea",
-    "\u05de\u05e0\u05d4\u05dc \u05e9\u05d9\u05e8\u05d5\u05ea \u05dc\u05e7\u05d5\u05d7\u05d5\u05ea",
-    "\u05de\u05e0\u05d4\u05dc\u05ea \u05e9\u05d9\u05e8\u05d5\u05ea \u05dc\u05e7\u05d5\u05d7\u05d5\u05ea",
 ]
 
 
