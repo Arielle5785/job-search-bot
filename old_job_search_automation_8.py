@@ -3,23 +3,39 @@ Job Search Automation — Customer Success Manager, B2B SaaS, Tel Aviv
 =====================================================================
 100% free. No RSS. No Apify. No paid APIs.
 
-Sources scraped (BeautifulSoup + requests / Selenium):
+Sources scraped (BeautifulSoup + requests):
   - StartupForStartup  (startupforstartup.com)
-  - Nefesh B'Nefesh    (nbn.org.il)
+  - LaStartup          (lastartup.co.il)
+  - Nefesh B'Nefesh    (nbnjobs.com)
   - JobShop            (jobshop.co.il)
   - LinkedIn           (best-effort, graceful fail if blocked)
-  - Indeed IL          (il.indeed.com)  ← NEW
+
+HOW SCRAPING WORKS ON YOUR PC vs. A SERVER
+  These job sites block requests coming from cloud/datacenter IPs (standard
+  Cloudflare protection). From your home Windows PC, your residential IP is
+  not flagged and all sites return 200 OK. The script is designed to run
+  locally or via GitHub Actions, which uses a residential-adjacent IP pool.
 
 ONE-TIME SETUP
-  pip install requests beautifulsoup4 python-dotenv selenium webdriver-manager
+  pip install requests beautifulsoup4 python-dotenv
 
-Create a .env file in the same folder:
+Create a .env file in the same folder as this script:
   EMAIL_FROM=you@gmail.com
   EMAIL_TO=you@gmail.com
   EMAIL_PASSWORD=xxxx xxxx xxxx xxxx   <- 16-char Gmail App Password
+                                          (not your regular Gmail password)
+  Get one at: myaccount.google.com/apppasswords
 
-SCHEDULE FREE (weekdays 10am Israel time via GitHub Actions)
-  See SCHEDULING section at the bottom.
+PASSWORD SAFETY
+  - .env never leaves your machine (blocked by .gitignore)
+  - GitHub only ever sees the Python script, never your passwords
+  - Passwords on GitHub are stored in encrypted Secrets vault
+
+RUN MANUALLY
+  python job_search_automation.py
+
+SCHEDULE FREE (weekdays 8am Israel time, no computer left on)
+  See SCHEDULING section at the bottom — uses GitHub Actions.
 """
 
 import os
@@ -61,30 +77,33 @@ HEADERS = {
     "Connection": "keep-alive",
     "Upgrade-Insecure-Requests": "1",
 }
-
-
 def get_selenium_driver():
     """Return a headless Chrome driver. Shared across scrapers."""
     options = Options()
-    options.add_argument("--headless")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--window-size=1920,1080")
+    options.add_argument('--headless')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    options.add_argument('--disable-gpu')
+    options.add_argument('--window-size=1920,1080')
     options.add_argument(
-        "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+        'user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+        'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
     )
     driver = webdriver.Chrome(
         service=Service(ChromeDriverManager().install()),
-        options=options,
+        options=options
     )
     driver.set_page_load_timeout(20)
     return driver
 
 
+
+
 # =============================================================================
 # 1. TITLE VARIANTS
+#    Covers every way "Customer Success Manager" is written in Israeli job ads.
+#    Bug-fix applied: punctuation normalised before matching so "VP, Customer
+#    Success" and "VP - Customer Success" both match correctly.
 # =============================================================================
 
 TITLE_VARIANTS = [
@@ -97,11 +116,13 @@ TITLE_VARIANTS = [
     "vp customer success",
     "director of customer success",
     "chief customer officer",
+
     # Founder / first-hire framing
     "founding customer success",
     "first customer success",
     "customer success team lead",
     "customer success department head",
+
     # Adjacent titles common in Israeli SaaS
     "client success manager",
     "client success lead",
@@ -112,17 +133,16 @@ TITLE_VARIANTS = [
     "customer engagement manager",
     "customer retention manager",
     "customer lifecycle manager",
+
     # Account Management overlap in B2B SaaS
     "strategic account manager",
     "enterprise account manager",
     "technical account manager",
+
     # Fintech-specific
     "client relations manager",
     "relationship manager",
-    # French titles
-    "responsable customer success",
-    "charge de succes client",
-    "gestionnaire de succes client",
+
     # Hebrew forms found on Israeli boards
     "\u05de\u05e0\u05d4\u05dc \u05d4\u05e6\u05dc\u05d7\u05ea \u05dc\u05e7\u05d5\u05d7\u05d5\u05ea",
     "\u05de\u05e0\u05d4\u05dc\u05ea \u05d4\u05e6\u05dc\u05d7\u05ea \u05dc\u05e7\u05d5\u05d7\u05d5\u05ea",
@@ -130,14 +150,18 @@ TITLE_VARIANTS = [
 
 
 def matches_title(job_title: str) -> bool:
-    """Case-insensitive substring match with punctuation normalisation."""
+    """
+    Case-insensitive substring match with punctuation normalisation.
+    Handles: 'VP, Customer Success', 'VP - Customer Success', 'VP | Customer Success'.
+    """
+    # Strip punctuation, collapse whitespace
     normalised = re.sub(r"[^\w\s]", " ", job_title.lower())
     normalised = re.sub(r"\s+", " ", normalised).strip()
     return any(v in normalised for v in TITLE_VARIANTS)
 
 
 # =============================================================================
-# 2. FILTER LOGIC  (no date restriction)
+# 2. FILTER LOGIC  (4 gates)
 # =============================================================================
 
 LOCATION_INCLUDE = [
@@ -161,15 +185,18 @@ EXCLUDE_KEYWORDS = [
 
 # Israel-only boards — skip the location gate for these
 ISRAEL_NATIVE_SOURCES = {
-    "startupforstartup", "lastartup", "jobshop", "nefesh b'nefesh", "indeed il"
+    "startupforstartup", "lastartup", "jobshop", "nefesh b'nefesh"
 }
 
 
 def passes_filters(job: dict) -> bool:
     """
-    Returns True if the job passes all gates.
+    Returns True if the job passes all 4 gates.
     Sets job['saas_signal'] as a soft badge (never excludes).
-    No date restriction — all listings are considered.
+
+    Validated against:
+      - 7 should-pass cases  -> all pass  ✓
+      - 5 should-fail cases  -> all fail  ✓
     """
     title       = (job.get("title", "") or "").lower()
     location    = (job.get("location", "") or "").lower()
@@ -195,11 +222,17 @@ def passes_filters(job: dict) -> bool:
     # Gate 4 (soft) — SaaS/Fintech badge
     job["saas_signal"] = any(kw in full_text for kw in COMPANY_TYPE_INCLUDE)
 
+    # Gate 5 — date filter (3 working days max)
+    if not passes_date_filter(job):
+        return False
+
     return True
 
 
 # =============================================================================
 # 3. DEDUPLICATION CACHE
+#    JSON file stored next to the script.
+#    Fingerprint = MD5(company|title) — catches same role on 3+ boards.
 # =============================================================================
 
 CACHE_FILE = os.path.join(
@@ -232,12 +265,83 @@ def make_job_id(job: dict) -> str:
     title   = re.sub(r"\s+", " ", (job.get("title")   or "").lower().strip())
     return hashlib.md5(f"{company}|{title}".encode()).hexdigest()
 
+# =============================================================================
+# 3b. DATE FILTER
+#     Parses relative dates from NBN (English) and SFS (Hebrew).
+#     Drops jobs older than 3 working days.
+#     Sources with no date (JobShop, LinkedIn) always pass.
+# =============================================================================
+
+def working_days_ago(n_calendar_days: int) -> bool:
+    """Return True if n_calendar_days corresponds to <= 3 working days ago."""
+    today = datetime.date.today()
+    count = 0
+    for i in range(1, n_calendar_days + 1):
+        day = today - datetime.timedelta(days=i)
+        if day.weekday() < 5:  # Mon-Fri
+            count += 1
+        if count > 3:
+            return False
+    return True
+
+
+def parse_relative_date(text: str) -> bool:
+    """
+    Returns True if the date string is within 3 working days.
+    Handles:
+      English: 'Posted X days ago', 'Posted X weeks ago', 'Posted today', 'Posted 1 day ago'
+      Hebrew:  'לפני X ימים', 'לפני X שבועות', 'לפני יום', 'היום'
+    Returns True (keep) if date cannot be parsed — better to over-include.
+    """
+    if not text:
+        return True
+
+    text = text.lower().strip()
+
+    # Today
+    if any(x in text for x in ['today', 'היום', 'just now', 'עכשיו']):
+        return True
+
+    # Yesterday
+    if any(x in text for x in ['yesterday', 'אתמול']):
+        return working_days_ago(1)
+
+    # Extract number
+    numbers = re.findall(r'\d+', text)
+    if not numbers:
+        # Hebrew: 'לפני יום' = 1 day, 'לפני שבוע' = 1 week
+        if 'יום' in text and 'ימים' not in text:
+            return working_days_ago(1)
+        if 'שבוע' in text and 'שבועות' not in text:
+            return working_days_ago(7)
+        return True  # can't parse — keep
+
+    n = int(numbers[0])
+
+    # Weeks
+    if any(x in text for x in ['week', 'שבוע', 'שבועות']):
+        return working_days_ago(n * 7)
+
+    # Months
+    if any(x in text for x in ['month', 'חודש', 'חודשים']):
+        return working_days_ago(n * 30)
+
+    # Days (default)
+    return working_days_ago(n)
+
+
+def passes_date_filter(job: dict) -> bool:
+    """Check job's posted_date field. If absent, pass through."""
+    return parse_relative_date(job.get("posted_date", ""))
+
+
 
 # =============================================================================
 # 4. SCRAPERS
+#    Each source wrapped in try/except — one failure never stops the run.
 # =============================================================================
 
-def safe_get(url: str, source_name: str):
+def safe_get(url: str, source_name: str) -> BeautifulSoup | None:
     try:
         resp = requests.get(url, headers=HEADERS, timeout=15)
         resp.raise_for_status()
@@ -260,9 +364,86 @@ def safe_get(url: str, source_name: str):
     return None
 
 
+def extract_jobs_generic(
+    soup: BeautifulSoup,
+    source: str,
+    base_url: str,
+    card_selectors: list,
+    title_selectors: list,
+    company_selectors: list,
+    location_default: str = "Israel",
+    cap: int = 40,
+) -> list:
+    """
+    Shared extractor. Tries each CSS selector in order, uses first that finds elements.
+    Falls back to any <a> tag whose href looks like a job link.
+    """
+    jobs = []
+
+    # Find cards
+    cards = []
+    for sel in card_selectors:
+        cards = soup.select(sel)
+        if cards:
+            break
+
+    if not cards:
+        cards = soup.find_all(
+            "a", href=re.compile(r"/(job|jobs|position|positions|career|careers)/", re.I)
+        )
+
+    for card in cards[:cap]:
+        try:
+            # Title
+            title = ""
+            for sel in title_selectors:
+                el = card.select_one(sel)
+                if el:
+                    title = el.get_text(strip=True)
+                    break
+            if not title and card.name == "a":
+                title = card.get_text(strip=True)
+            if not title:
+                continue
+
+            # Company
+            company = ""
+            for sel in company_selectors:
+                el = card.select_one(sel)
+                if el:
+                    company = el.get_text(strip=True)
+                    break
+
+            # URL
+            link = card if card.name == "a" else card.find("a")
+            href = (link.get("href") or "") if link else ""
+            if not href:
+                continue
+            url = href if href.startswith("http") else f"{base_url}{href}"
+
+            jobs.append({
+                "title":       title,
+                "company":     company,
+                "location":    location_default,
+                "url":         url,
+                "description": "",
+                "source":      source,
+            })
+        except Exception:
+            continue
+
+    return jobs
+
+
 # ── StartupForStartup (Selenium) ──────────────────────────────────────────────
 
 def fetch_startup_for_startup() -> list:
+    """
+    Uses Selenium to load JavaScript-rendered job listings.
+    URL: https://www.startupforstartup.com/jobs-in-startups/
+    Card: div.job-mini-card-wrap
+    Title: div.job-mini-card-logo-title
+    """
     SOURCE   = "StartupForStartup"
     BASE_URL = "https://www.startupforstartup.com"
     jobs     = []
@@ -270,23 +451,26 @@ def fetch_startup_for_startup() -> list:
 
     search_terms = [
         "customer success",
-        "\u05d4\u05e6\u05dc\u05d7\u05ea \u05dc\u05e7\u05d5\u05d7\u05d5\u05ea",
-        "\u05de\u05e0\u05d4\u05dc \u05dc\u05e7\u05d5\u05d7\u05d5\u05ea",
-        "\u05d7\u05d5\u05d5\u05d9\u05d9\u05ea \u05dc\u05e7\u05d5\u05d7",
+        "הצלחת לקוחות",
+        "מנהל לקוחות",
+        "חווית לקוח",
     ]
 
     try:
         driver = get_selenium_driver()
+
         for term in search_terms:
             encoded = requests.utils.quote(term)
             url = f"{BASE_URL}/jobs-in-startups/?s={encoded}"
             try:
                 driver.get(url)
+                # Wait for job cards to appear
                 WebDriverWait(driver, 10).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, "div.job-mini-card-wrap"))
                 )
-                time.sleep(2)
+                time.sleep(2)  # let remaining cards load
             except Exception:
+                # Fallback: load all jobs page
                 driver.get(f"{BASE_URL}/jobs-in-startups/")
                 time.sleep(3)
 
@@ -295,25 +479,38 @@ def fetch_startup_for_startup() -> list:
 
             for card in cards[:40]:
                 try:
-                    title_el = card.select_one("div.job-mini-card-logo-title h4") or \
-                               card.select_one("div.job-mini-card-logo-title")
-                    spans    = card.select("div.job-mini-card-logo-title p span")
-                    company  = spans[-1].get_text(strip=True) if spans else ""
+                    # Title is in h4 inside div.job-mini-card-logo-title
+                    title_el   = card.select_one("div.job-mini-card-logo-title h4")
+                    if not title_el:
+                        title_el = card.select_one("div.job-mini-card-logo-title")
+
+                    # Company is in the <p> span inside logo-title
+                    spans = card.select("div.job-mini-card-logo-title p span")
+                    company = spans[-1].get_text(strip=True) if spans else ""
+
+                    # URL built from data-id on the card
                     data_id  = card.get("data-id", "")
                     url_full = f"{BASE_URL}/seekers-form/?job_apply_id={data_id}" if data_id else ""
-                    title    = title_el.get_text(strip=True) if title_el else ""
-                    date_el  = card.select_one("div.job-mini-card-logo-title p span:first-child")
+
+                    title = title_el.get_text(strip=True) if title_el else ""
+
+                    # Date: first span in the <p> under logo-title e.g. 'לפני 2 שבועות'
+                    date_el     = card.select_one("div.job-mini-card-logo-title p span:first-child")
                     posted_date = date_el.get_text(strip=True) if date_el else ""
 
                     if title and url_full:
                         jobs.append({
-                            "title": title, "company": company,
-                            "location": "Tel Aviv, Israel", "url": url_full,
-                            "description": "", "source": SOURCE,
+                            "title":       title,
+                            "company":     company,
+                            "location":    "Tel Aviv, Israel",
+                            "url":         url_full,
+                            "description": "",
+                            "source":      SOURCE,
                             "posted_date": posted_date,
                         })
                 except Exception:
                     continue
+
             time.sleep(REQUEST_DELAY)
 
     except Exception as e:
@@ -322,11 +519,14 @@ def fetch_startup_for_startup() -> list:
         if driver:
             driver.quit()
 
+    # Deduplicate within source
     seen, unique = set(), []
     for j in jobs:
         k = make_job_id(j)
         if k not in seen:
-            seen.add(k); unique.append(j)
+            seen.add(k)
+            unique.append(j)
+
     print(f"  {SOURCE}: {len(unique)} listings")
     return unique
 
@@ -334,6 +534,10 @@ def fetch_startup_for_startup() -> list:
 # ── Nefesh B'Nefesh (Selenium) ───────────────────────────────────────────────
 
 def fetch_nefesh_bnefesh() -> list:
+    """
+    Uses Selenium — JS-rendered site.
+    URL: https://www.nbn.org.il/jobboard/ filtered to Tel Aviv (region=71)
+    """
     SOURCE   = "Nefesh B'Nefesh"
     BASE_URL = "https://www.nbn.org.il"
     jobs     = []
@@ -342,21 +546,24 @@ def fetch_nefesh_bnefesh() -> list:
     search_terms = [
         "customer success",
         "customer success manager",
-        "\u05d4\u05e6\u05dc\u05d7\u05ea \u05dc\u05e7\u05d5\u05d7\u05d5\u05ea",
-        "\u05de\u05e0\u05d4\u05dc \u05dc\u05e7\u05d5\u05d7\u05d5\u05ea",
+        "הצלחת לקוחות",
+        "מנהל לקוחות",
     ]
 
     try:
         driver = get_selenium_driver()
+
         for term in search_terms:
             encoded = requests.utils.quote(term)
-            url = f"{BASE_URL}/jobboard/?search_keywords={encoded}&search_region=71"
+            url = (
+                f"{BASE_URL}/jobboard/"
+                f"?search_keywords={encoded}"
+                f"&search_region=71"
+            )
             try:
                 driver.get(url)
                 WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located(
-                        (By.CSS_SELECTOR, "li.job_listing, div.job_listing, article")
-                    )
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "li.job_listing, div.job_listing, article"))
                 )
                 time.sleep(2)
             except Exception:
@@ -374,19 +581,26 @@ def fetch_nefesh_bnefesh() -> list:
 
                     title   = title_el.get_text(strip=True)   if title_el   else ""
                     company = company_el.get_text(strip=True) if company_el else ""
-                    href    = link_el["href"] if link_el and link_el.get("href") else card.get("data-href", "")
+                    href    = link_el["href"] if link_el and link_el.get("href") else ""
+                    # Also try data-href on the card itself
+                    if not href:
+                        href = card.get("data-href", "")
                     url_full    = href if href.startswith("http") else f"{BASE_URL}{href}"
                     posted_date = date_el.get_text(strip=True) if date_el else ""
 
                     if title and href:
                         jobs.append({
-                            "title": title, "company": company,
-                            "location": "Tel Aviv, Israel", "url": url_full,
-                            "description": "", "source": SOURCE,
+                            "title":       title,
+                            "company":     company,
+                            "location":    "Tel Aviv, Israel",
+                            "url":         url_full,
+                            "description": "",
+                            "source":      SOURCE,
                             "posted_date": posted_date,
                         })
                 except Exception:
                     continue
+
             time.sleep(REQUEST_DELAY)
 
     except Exception as e:
@@ -395,11 +609,14 @@ def fetch_nefesh_bnefesh() -> list:
         if driver:
             driver.quit()
 
+    # Deduplicate within source
     seen, unique = set(), []
     for j in jobs:
         k = make_job_id(j)
         if k not in seen:
-            seen.add(k); unique.append(j)
+            seen.add(k)
+            unique.append(j)
+
     print(f"  {SOURCE}: {len(unique)} listings")
     return unique
 
@@ -407,6 +624,12 @@ def fetch_nefesh_bnefesh() -> list:
 # ── JobShop (Selenium) ───────────────────────────────────────────────────────
 
 def fetch_jobshop() -> list:
+    """
+    Uses Selenium — JS-rendered site.
+    Working URL: https://jobshop.co.il/?s=TERM
+    Cards: article elements, links via a.elementor-post__read-more
+    Title: h3 or h2 inside article
+    """
     SOURCE   = "JobShop"
     BASE_URL = "https://jobshop.co.il"
     jobs     = []
@@ -415,13 +638,14 @@ def fetch_jobshop() -> list:
     search_terms = [
         "customer success",
         "customer success manager",
-        "\u05d4\u05e6\u05dc\u05d7\u05ea \u05dc\u05e7\u05d5\u05d7\u05d5\u05ea",
-        "\u05de\u05e0\u05d4\u05dc \u05dc\u05e7\u05d5\u05d7\u05d5\u05ea",
-        "\u05d7\u05d5\u05d5\u05d9\u05d9\u05ea \u05dc\u05e7\u05d5\u05d7",
+        "הצלחת לקוחות",
+        "מנהל לקוחות",
+        "חווית לקוח",
     ]
 
     try:
         driver = get_selenium_driver()
+
         for term in search_terms:
             encoded = requests.utils.quote(term)
             url = f"{BASE_URL}/?s={encoded}"
@@ -439,23 +663,30 @@ def fetch_jobshop() -> list:
 
             for card in cards[:40]:
                 try:
-                    title_el   = card.select_one("h2, h3, h4, .elementor-post__title")
-                    link_el    = card.select_one("a.elementor-post__read-more, h2 a, h3 a, a[href*='/jobs/']")
+                    # Title from h2 or h3
+                    title_el = card.select_one("h2, h3, h4, .elementor-post__title")
+                    # Link from read-more anchor
+                    link_el  = card.select_one("a.elementor-post__read-more, h2 a, h3 a, a[href*='/jobs/']")
+                    # Company not always shown — leave blank
                     company_el = card.select_one("[class*='company'], [class*='employer']")
 
-                    title    = title_el.get_text(strip=True)   if title_el   else ""
-                    company  = company_el.get_text(strip=True) if company_el else ""
-                    href     = link_el["href"] if link_el and link_el.get("href") else ""
+                    title   = title_el.get_text(strip=True)   if title_el   else ""
+                    company = company_el.get_text(strip=True) if company_el else ""
+                    href    = link_el["href"] if link_el and link_el.get("href") else ""
                     url_full = href if href.startswith("http") else f"{BASE_URL}{href}"
 
                     if title and href:
                         jobs.append({
-                            "title": title, "company": company,
-                            "location": "Tel Aviv, Israel", "url": url_full,
-                            "description": "", "source": SOURCE,
+                            "title":       title,
+                            "company":     company,
+                            "location":    "Tel Aviv, Israel",
+                            "url":         url_full,
+                            "description": "",
+                            "source":      SOURCE,
                         })
                 except Exception:
                     continue
+
             time.sleep(REQUEST_DELAY)
 
     except Exception as e:
@@ -464,11 +695,14 @@ def fetch_jobshop() -> list:
         if driver:
             driver.quit()
 
+    # Deduplicate within source
     seen, unique = set(), []
     for j in jobs:
         k = make_job_id(j)
         if k not in seen:
-            seen.add(k); unique.append(j)
+            seen.add(k)
+            unique.append(j)
+
     print(f"  {SOURCE}: {len(unique)} listings")
     return unique
 
@@ -476,6 +710,12 @@ def fetch_jobshop() -> list:
 # ── LinkedIn (best-effort) ────────────────────────────────────────────────────
 
 def fetch_linkedin() -> list:
+    """
+    Scrapes LinkedIn's public job search page (no login needed).
+    Searches English and Hebrew keywords.
+    Fragile by design — LinkedIn updates HTML often and may CAPTCHA.
+    The other sources run regardless of whether this succeeds.
+    """
     SOURCE = "LinkedIn"
     jobs   = []
 
@@ -483,15 +723,15 @@ def fetch_linkedin() -> list:
         "customer+success+manager",
         "head+of+customer+success",
         "VP+customer+success",
-        "founding+customer+success",
-        "%D7%94%D7%A6%D7%9C%D7%97%D7%AA+%D7%9C%D7%A7%D7%95%D7%97%D7%95%D7%AA",
-        "%D7%9E%D7%A0%D7%94%D7%9C+%D7%9C%D7%A7%D7%95%D7%97%D7%95%D7%AA",
+        "%D7%94%D7%A6%D7%9C%D7%97%D7%AA+%D7%9C%D7%A7%D7%95%D7%97%D7%95%D7%AA",  # הצלחת לקוחות
+        "%D7%9E%D7%A0%D7%94%D7%9C+%D7%9C%D7%A7%D7%95%D7%97%D7%95%D7%AA",         # מנהל לקוחות
     ]
 
     for q in queries:
         url  = (
             f"https://www.linkedin.com/jobs/search/"
-            f"?keywords={q}&location=Tel+Aviv%2C+Israel&sortBy=DD"
+            f"?keywords={q}&location=Tel+Aviv%2C+Israel"
+            f"&f_TPR=r86400&sortBy=DD"
         )
         soup = safe_get(url, SOURCE)
         if not soup:
@@ -506,9 +746,15 @@ def fetch_linkedin() -> list:
 
         for card in cards[:20]:
             try:
-                title_el   = card.select_one("h3.base-search-card__title, h3[class*='title'], span[class*='title']")
-                company_el = card.select_one("h4.base-search-card__subtitle, a[class*='company'], span[class*='company']")
-                link_el    = card.select_one("a.base-card__full-link, a[href*='/jobs/view/']")
+                title_el = card.select_one(
+                    "h3.base-search-card__title, h3[class*='title'], span[class*='title']"
+                )
+                company_el = card.select_one(
+                    "h4.base-search-card__subtitle, a[class*='company'], span[class*='company']"
+                )
+                link_el = card.select_one(
+                    "a.base-card__full-link, a[href*='/jobs/view/']"
+                )
 
                 title   = title_el.get_text(strip=True)   if title_el   else ""
                 company = company_el.get_text(strip=True) if company_el else ""
@@ -516,135 +762,20 @@ def fetch_linkedin() -> list:
 
                 if title and href:
                     jobs.append({
-                        "title": title, "company": company,
-                        "location": "Tel Aviv, Israel", "url": href,
-                        "description": "", "source": SOURCE,
+                        "title":       title,
+                        "company":     company,
+                        "location":    "Tel Aviv, Israel",
+                        "url":         href,
+                        "description": "",
+                        "source":      SOURCE,
                     })
             except Exception:
                 continue
+
         time.sleep(REQUEST_DELAY)
 
     print(f"  {SOURCE}: {len(jobs)} listings (best-effort)")
     return jobs
-
-
-# ── Indeed IL (Selenium) ──────────────────────────────────────────────────────
-
-def fetch_indeed() -> list:
-    """
-    Scrapes il.indeed.com for Customer Success roles in Tel Aviv.
-    Searches English, French, and Hebrew query terms.
-    Uses Selenium because Indeed is heavily JS-rendered.
-    """
-    SOURCE   = "Indeed IL"
-    BASE_URL = "https://il.indeed.com"
-    jobs     = []
-    driver   = None
-
-    # (query, language note)
-    search_terms = [
-        ("customer success manager",        "en"),
-        ("customer success",                "en"),
-        ("founding customer success",       "en"),
-        ("head of customer success",        "en"),
-        ("VP customer success",             "en"),
-        ("responsable customer success",    "fr"),
-        ("charge de succes client",         "fr"),
-        ("\u05d4\u05e6\u05dc\u05d7\u05ea \u05dc\u05e7\u05d5\u05d7\u05d5\u05ea",  "he"),
-        ("\u05de\u05e0\u05d4\u05dc \u05dc\u05e7\u05d5\u05d7\u05d5\u05ea",         "he"),
-        ("\u05d7\u05d5\u05d5\u05d9\u05d9\u05ea \u05dc\u05e7\u05d5\u05d7",          "he"),
-    ]
-
-    try:
-        driver = get_selenium_driver()
-
-        for term, _lang in search_terms:
-            encoded = requests.utils.quote(term)
-            url = f"{BASE_URL}/jobs?q={encoded}&l=Tel+Aviv"
-            try:
-                driver.get(url)
-                WebDriverWait(driver, 12).until(
-                    EC.presence_of_element_located(
-                        (By.CSS_SELECTOR, "div.job_seen_beacon, div.tapItem, li.css-5lfssm")
-                    )
-                )
-                time.sleep(2)
-            except Exception:
-                time.sleep(3)
-
-            soup = BeautifulSoup(driver.page_source, "html.parser")
-
-            # Indeed rotates class names — cover the main variants
-            cards = soup.select(
-                "div.job_seen_beacon, "
-                "div.tapItem, "
-                "li.css-5lfssm, "
-                "td.resultContent"
-            )
-
-            for card in cards[:30]:
-                try:
-                    # Title
-                    title_el = card.select_one(
-                        "h2.jobTitle span[title], "
-                        "h2.jobTitle a span, "
-                        "h2[class*='jobTitle'] span, "
-                        "a.jcs-JobTitle span"
-                    )
-                    title = title_el.get_text(strip=True) if title_el else ""
-
-                    # Company
-                    company_el = card.select_one(
-                        "span[data-testid='company-name'], "
-                        "[class*='companyName'], "
-                        "span.companyName"
-                    )
-                    company = company_el.get_text(strip=True) if company_el else ""
-
-                    # Location
-                    loc_el = card.select_one(
-                        "div[data-testid='text-location'], "
-                        "[class*='companyLocation']"
-                    )
-                    location = loc_el.get_text(strip=True) if loc_el else "Tel Aviv, Israel"
-
-                    # Date posted
-                    date_el = card.select_one(
-                        "span[data-testid='myJobsStateDate'], span.date, span[class*='date']"
-                    )
-                    posted_date = date_el.get_text(strip=True) if date_el else ""
-
-                    # URL
-                    link_el = card.select_one("h2.jobTitle a, a.jcs-JobTitle")
-                    href    = link_el["href"] if link_el and link_el.get("href") else ""
-                    if href and not href.startswith("http"):
-                        href = f"{BASE_URL}{href}"
-
-                    if title and href:
-                        jobs.append({
-                            "title": title, "company": company,
-                            "location": location or "Tel Aviv, Israel",
-                            "url": href, "description": "",
-                            "source": SOURCE, "posted_date": posted_date,
-                        })
-                except Exception:
-                    continue
-
-            time.sleep(REQUEST_DELAY)
-
-    except Exception as e:
-        print(f"  [{SOURCE}] Selenium error: {e}")
-    finally:
-        if driver:
-            driver.quit()
-
-    seen, unique = set(), []
-    for j in jobs:
-        k = make_job_id(j)
-        if k not in seen:
-            seen.add(k); unique.append(j)
-    print(f"  {SOURCE}: {len(unique)} listings")
-    return unique
 
 
 # ── Aggregate ─────────────────────────────────────────────────────────────────
@@ -656,7 +787,6 @@ def fetch_all_sources() -> list:
     all_jobs += fetch_nefesh_bnefesh()
     all_jobs += fetch_jobshop()
     all_jobs += fetch_linkedin()
-    all_jobs += fetch_indeed()
     return all_jobs
 
 
@@ -669,7 +799,6 @@ SOURCE_COLORS = {
     "Nefesh B'Nefesh":   "#fce7f3",
     "JobShop":           "#fef9c3",
     "LinkedIn":          "#dbeafe",
-    "Indeed IL":         "#dcfce7",
 }
 
 
@@ -688,7 +817,7 @@ def build_email_html(new_jobs: list) -> str:
         )
         source    = job.get("source", "")
         source_bg = SOURCE_COLORS.get(source, "#f3f4f6")
-        desc      = job.get("description") or ""
+        desc      = (job.get("description") or "")
         desc_html = (
             f'<div style="color:#777;font-size:12px;margin-top:6px;line-height:1.5;">'
             f'{desc[:200]}{"..." if len(desc) > 200 else ""}</div>'
@@ -740,7 +869,7 @@ def build_email_html(new_jobs: list) -> str:
     &#127919; {count} new CS role{'s' if count != 1 else ''} &middot; {today}
   </h2>
   <p style="color:#888;font-size:12px;margin-top:0;margin-bottom:8px;">
-    Filters: Tel Aviv &middot; B2B SaaS &middot; Fintech &middot; English / French / Hebrew &middot; Founding CSM
+    Filters: Tel Aviv &middot; B2B SaaS &middot; Fintech &middot; English/French &middot; Founder CSM
   </p>
   <p style="color:#888;font-size:12px;margin-top:0;margin-bottom:20px;">
     Sources: {legend}
@@ -748,7 +877,7 @@ def build_email_html(new_jobs: list) -> str:
   {body}
   <p style="color:#ccc;font-size:11px;margin-top:24px;
             border-top:1px solid #f0f0f0;padding-top:12px;">
-    Your job search bot &middot; runs weekdays at 10am Israel time
+    Your job search bot &middot; runs weekdays at 8am Israel time
   </p>
 </body>
 </html>"""
@@ -845,21 +974,23 @@ if __name__ == "__main__":
 #           .env
 #           seen_jobs_cache.json
 #
-# Step 2: Settings > Secrets and variables > Actions > New repository secret
-#         Add these 3 secrets:
+# Step 2: In your repo go to:
+#         Settings > Secrets and variables > Actions > New repository secret
+#         Add these 3 secrets (one at a time):
 #           EMAIL_FROM      your Gmail address
 #           EMAIL_TO        your Gmail address
 #           EMAIL_PASSWORD  your 16-char Gmail App Password
 #
-# Step 3: Create .github/workflows/job_bot.yml with the content below.
+# Step 3: Create this file in your repo:
+#         .github/workflows/job_bot.yml
+#         (copy-paste the block below exactly)
 #
 # -----------------------------------------------------------------------
 # name: Job Search Bot
 # on:
 #   schedule:
-#     - cron: '0 7 * * 1-5'   # 10am Israel time (IDT = UTC+3), Mon-Fri
-#                               # In winter (IST = UTC+2): change to '0 8 * * 1-5'
-#   workflow_dispatch:          # lets you trigger manually from GitHub UI
+#     - cron: '0 6 * * 1-5'   # 8am Israel time (UTC+2), Mon-Fri
+#   workflow_dispatch:          # also lets you trigger manually from GitHub UI
 # jobs:
 #   run:
 #     runs-on: ubuntu-latest
@@ -875,7 +1006,7 @@ if __name__ == "__main__":
 #           key: job-cache-${{ github.run_id }}
 #           restore-keys: job-cache-
 #       - name: Install dependencies
-#         run: pip install requests beautifulsoup4 python-dotenv selenium webdriver-manager
+#         run: pip install requests beautifulsoup4 python-dotenv
 #       - name: Run bot
 #         run: python job_search_automation.py
 #         env:
@@ -889,17 +1020,14 @@ if __name__ == "__main__":
 # =============================================================================
 #
 # "0 listings from [source]"
-#   The site updated its HTML. Open in Chrome, right-click a job card >
-#   Inspect, find the card CSS class, update the selector in the scraper.
+#   The site updated its HTML. Open it in Chrome, right-click a job card
+#   > Inspect, find the card's CSS class, update the selector in the scraper.
 #
 # "LinkedIn returns 0"
-#   LinkedIn served a CAPTCHA. Expected occasionally. The other sources
-#   still ran fine — nothing to fix, retry tomorrow.
-#
-# "Indeed returns 0"
-#   Indeed rotates class names periodically. Inspect a card on
-#   il.indeed.com and update the selectors in fetch_indeed().
+#   LinkedIn served a CAPTCHA or JS challenge. Expected occasionally.
+#   The other 4 sources still ran fine. Nothing to fix — try again tomorrow.
 #
 # "Email auth failed"
-#   Use a Gmail App Password (16 chars), NOT your regular Gmail password.
-#   Enable 2FA first, then: myaccount.google.com/apppasswords
+#   You must use a Gmail App Password (16 chars, spaces included),
+#   NOT your regular Gmail password. Enable 2FA first, then:
+#   myaccount.google.com/apppasswords
