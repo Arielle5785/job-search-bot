@@ -18,7 +18,7 @@ jobs:
           key: job-cache-${{ github.run_id }}
           restore-keys: job-cache-
       - name: Install dependencies
-        run: pip install requests beautifulsoup4 python-dotenv selenium webdriver-manager
+        run: pip install requests beautifulsoup4 python-dotenv selenium webdriver-manager anthropic
       - name: Install Chrome
         run: |
           sudo apt-get update
