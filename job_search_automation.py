@@ -168,7 +168,7 @@ Example format:
     try:
         client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
         message = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model="claude-sonnet-4-5",
             max_tokens=1000,
             messages=[{"role": "user", "content": prompt}]
         )
@@ -897,7 +897,7 @@ def main():
     print(f"\nRaw total: {len(raw_jobs)} listings scraped")
 
     # Current Israel time (UTC+3)
-    israel_hour = (datetime.datetime.utcnow().hour + 3) % 24
+    israel_hour = (datetime.datetime.now(datetime.timezone.utc).hour + 3) % 24
     israel_time = f"{israel_hour:02d}:00"
     print(f"\nIsrael time: {israel_time}")
 
