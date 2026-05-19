@@ -237,6 +237,12 @@ def passes_filters(job: dict, title_variants: list, user: dict) -> bool:
     normalised_title = re.sub(r"[^\w\s]", " ", title)
     normalised_title = re.sub(r"\s+", " ", normalised_title).strip()
 
+    # Gate 0 — skip jobs older than ~1 month
+    posted_date = (job.get("posted_date") or "").lower()
+    old_signals = ["month", "months", "30+ days", "30 days ago", "מזמן"]
+    if any(s in posted_date for s in old_signals):
+        return False
+    
     # Gate 1 — title must match one of the user's variants
     if not any(v.lower() in normalised_title for v in title_variants):
         return False
@@ -882,6 +888,7 @@ def main():
     if not users:
         print("No users to process. Exiting.")
         return
+    is_manual = os.getenv("IS_MANUAL", "false").lower() == "true"
 
     # Scrape all sources ONCE — then filter per user
     # Use first user's profession as the base search term
@@ -917,7 +924,7 @@ def main():
         else:
             freq_list = [f.strip() for f in str(frequency).split(",")]
 
-        if israel_time not in freq_list:
+        if not is_manual and israel_time not in freq_list:
             print(f"  [skip] {name} — not scheduled at {israel_time} (scheduled: {freq_list})")
             continue
 
