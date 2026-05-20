@@ -401,49 +401,6 @@
             animation: fadeUp 0.6s 0.2s ease both;
         }
 
-
-        /* Profession autocomplete */
-        .autocomplete-wrap {
-            position: relative;
-        }
-
-        .autocomplete-dropdown {
-            display: none;
-            position: absolute;
-            top: calc(100% + 4px);
-            left: 0;
-            right: 0;
-            background: var(--card);
-            border: 1px solid var(--accent);
-            border-radius: 10px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-            z-index: 100;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-
-        .autocomplete-dropdown.open {
-            display: block;
-        }
-
-        .autocomplete-item {
-            padding: 10px 16px;
-            font-size: 14px;
-            cursor: pointer;
-            color: var(--ink);
-            transition: background 0.15s;
-        }
-
-        .autocomplete-item:hover,
-        .autocomplete-item.active {
-            background: var(--accent-light);
-            color: var(--accent);
-        }
-
-        .autocomplete-item .match {
-            font-weight: 600;
-        }
-
         @keyframes fadeUp {
             from {
                 opacity: 0;
@@ -500,13 +457,8 @@
 
                 <div class="field">
                     <span class="field-label">Main job title <span class="req">*</span></span>
-                    <div class="autocomplete-wrap">
-                        <input type="text" id="profession" placeholder="e.g. Customer Success Manager"
-                            autocomplete="off" required oninput="onProfessionInput(this)"
-                            onkeydown="onProfessionKey(event)" onblur="closeProfessionDropdown()" />
-                        <div class="autocomplete-dropdown" id="professionDropdown"></div>
-                    </div>
-                    <p class="hint">Start typing — existing titles will appear. Type freely to add a new one.</p>
+                    <input type="text" id="profession" placeholder="e.g. Customer Success Manager" required />
+                    <p class="hint">Your primary title — add variations below to cast a wider net.</p>
                 </div>
 
                 <div class="field">
@@ -656,7 +608,7 @@
                         <label class="chip"><input type="checkbox" name="frequency" value="17:00" /> 5:00 PM</label>
                         <label class="chip"><input type="checkbox" name="frequency" value="21:00" /> 9:00 PM</label>
                     </div>
-                    <p class="hint">Select one or more. Runs Sunday–Friday (Israel time).</p>
+                    <p class="hint">Select one or more. Runs Monday–Friday (Israel time).</p>
                 </div>
 
                 <hr class="divider" />
@@ -682,146 +634,6 @@
     </div>
 
     <script>
-        // ── Known professions for autocomplete (Title Case) ──
-        const KNOWN_PROFESSIONS = [
-            "Customer Success Manager",
-            "Senior Customer Success Manager",
-            "Head of Customer Success",
-            "Customer Operations Manager",
-            "Account Manager",
-            "Account Executive",
-            "Sales Manager",
-            "Business Development Manager",
-            "Head of Business Development",
-            "Marketing Manager",
-            "Senior Marketing Manager",
-            "Head of Marketing",
-            "Head of Growth",
-            "Product Manager",
-            "Senior Product Manager",
-            "Project Manager",
-            "Operations Manager",
-            "Revenue Operations Manager",
-            "Administrative Assistant",
-            "Executive Assistant",
-            "Office Manager",
-            "HR Manager",
-            "Talent Acquisition Manager",
-            "Data Analyst",
-            "Business Analyst",
-            "Financial Analyst",
-            "Software Engineer",
-            "Full Stack Developer",
-            "Frontend Developer",
-            "Backend Developer",
-        ];
-
-        // ── Known variants per profession (for autofill) ──
-        const KNOWN_VARIANTS = {
-            "Customer Success Manager": ["Senior Customer Success Manager", "CS Team Lead", "Customer Success Lead", "Account Manager", "Client Success Manager"],
-            "Customer Operations Manager": ["Customer Ops Lead", "Operations Manager", "Customer Support Manager", "Account Operations Manager"],
-            "Account Manager": ["Senior Account Manager", "Key Account Manager", "Account Executive", "Strategic Account Manager"],
-            "Marketing Manager": ["Senior Marketing Manager", "Head of Marketing", "Head of Growth", "Marketing Lead", "Growth Manager"],
-            "Head of Business Development": ["Business Development Manager", "VP Business Development", "Sales Enablement Manager", "Partnerships Manager"],
-            "Product Manager": ["Senior Product Manager", "Group Product Manager", "Associate Product Manager", "Head of Product"],
-            "Administrative Assistant": ["Executive Assistant", "Office Manager", "Personal Assistant", "Operations Coordinator"],
-        };
-
-        let acIndex = -1;
-        let acItems = [];
-
-        function toTitleCase(str) {
-            return str.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
-        }
-
-        function onProfessionInput(input) {
-            const q = input.value.trim();
-            const dd = document.getElementById('professionDropdown');
-            acIndex = -1;
-
-            if (q.length < 1) { dd.classList.remove('open'); return; }
-
-            acItems = KNOWN_PROFESSIONS.filter(p =>
-                p.toLowerCase().includes(q.toLowerCase())
-            );
-
-            if (acItems.length === 0) { dd.classList.remove('open'); return; }
-
-            dd.innerHTML = acItems.map((p, i) => {
-                const hl = p.replace(new RegExp(`(${q})`, 'gi'), '<span class="match">$1</span>');
-                return `<div class="autocomplete-item" data-i="${i}"
-                    onmousedown="selectProfession('${p.replace(/'/g, "\\'")}')">
-                    ${hl}
-                </div>`;
-            }).join('');
-            dd.classList.add('open');
-        }
-
-        function onProfessionKey(e) {
-            const dd = document.getElementById('professionDropdown');
-            const items = dd.querySelectorAll('.autocomplete-item');
-            if (!dd.classList.contains('open')) return;
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                acIndex = Math.min(acIndex + 1, items.length - 1);
-                items.forEach((el, i) => el.classList.toggle('active', i === acIndex));
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                acIndex = Math.max(acIndex - 1, 0);
-                items.forEach((el, i) => el.classList.toggle('active', i === acIndex));
-            } else if (e.key === 'Enter' && acIndex >= 0) {
-                e.preventDefault();
-                selectProfession(acItems[acIndex]);
-            } else if (e.key === 'Escape') {
-                dd.classList.remove('open');
-            }
-        }
-
-        function closeProfessionDropdown() {
-            // Small delay so mousedown on item fires first
-            setTimeout(() => {
-                const dd = document.getElementById('professionDropdown');
-                if (dd) dd.classList.remove('open');
-                // Title-case whatever was typed
-                const inp = document.getElementById('profession');
-                if (inp && inp.value.trim()) {
-                    inp.value = toTitleCase(inp.value.trim());
-                    suggestVariantsForProfession(inp.value);
-                }
-            }, 150);
-        }
-
-        function selectProfession(profession) {
-            document.getElementById('profession').value = profession;
-            document.getElementById('professionDropdown').classList.remove('open');
-            suggestVariantsForProfession(profession);
-        }
-
-        function suggestVariantsForProfession(profession) {
-            const variants = KNOWN_VARIANTS[profession];
-            if (!variants) return;
-            const list = document.getElementById('variantsList');
-            // Clear existing empty rows and prefill with known variants
-            list.innerHTML = '';
-            variants.forEach(v => {
-                const row = document.createElement('div');
-                row.className = 'variant-row';
-                row.innerHTML = `
-                    <input type="text" name="variant" value="${v}" />
-                    <button type="button" class="remove-btn" onclick="removeVariant(this)">×</button>
-                `;
-                list.appendChild(row);
-            });
-            // Always leave one empty row at end
-            const empty = document.createElement('div');
-            empty.className = 'variant-row';
-            empty.innerHTML = `
-                <input type="text" name="variant" placeholder="e.g. Add another variant" />
-                <button type="button" class="remove-btn" onclick="removeVariant(this)">×</button>
-            `;
-            list.appendChild(empty);
-        }
-
         let currentMode = 'register';
 
         function switchMode(mode) {

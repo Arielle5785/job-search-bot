@@ -1,10 +1,10 @@
 name: Job Search Bot
 on:
   schedule:
-    - cron: "0 5 * * 1-5" # 08:00 Israel time
-    - cron: "0 9 * * 1-5" # 12:00 Israel time
-    - cron: "0 14 * * 1-5" # 17:00 Israel time
-    - cron: "0 18 * * 1-5" # 21:00 Israel time
+    - cron: "0 5 * * 0-5" # 08:00 Israel time
+    - cron: "0 9 * * 0-5" # 12:00 Israel time
+    - cron: "0 14 * * 0-5" # 17:00 Israel time
+    - cron: "0 18 * * 0-5" # 21:00 Israel time
   workflow_dispatch:
 jobs:
   run:
