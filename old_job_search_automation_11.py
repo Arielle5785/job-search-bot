@@ -903,11 +903,9 @@ def main():
     raw_jobs = fetch_all_sources(search_terms)
     print(f"\nRaw total: {len(raw_jobs)} listings scraped")
 
-    # Current Israel time (IDT = UTC+3)
-    now_utc = datetime.datetime.now(datetime.timezone.utc)
-    now_israel = now_utc + datetime.timedelta(hours=3)
-    israel_time = now_israel.strftime("%H:%M")
-    israel_total_minutes = now_israel.hour * 60 + now_israel.minute
+    # Current Israel time (UTC+3)
+    israel_hour = (datetime.datetime.now(datetime.timezone.utc).hour + 3) % 24
+    israel_time = f"{israel_hour:02d}:00"
     print(f"\nIsrael time: {israel_time}")
 
     # Process each user
@@ -926,18 +924,7 @@ def main():
         else:
             freq_list = [f.strip() for f in str(frequency).split(",")]
 
-        def is_scheduled_now(freq_list, current_total_minutes, tolerance=45):
-            for t in freq_list:
-                try:
-                    h, m = map(int, t.strip().split(":"))
-                    sched_total = h * 60 + m
-                    if abs(current_total_minutes - sched_total) <= tolerance:
-                        return True
-                except ValueError:
-                    continue
-            return False
-
-        if not is_manual and not is_scheduled_now(freq_list, israel_total_minutes):
+        if not is_manual and israel_time not in freq_list:
             print(f"  [skip] {name} — not scheduled at {israel_time} (scheduled: {freq_list})")
             continue
 
