@@ -33,5 +33,6 @@ jobs:
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
           EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          USERS_JSON: ${{ secrets.USERS_JSON }}
           IS_MANUAL: ${{ github.event_name == 'workflow_dispatch' }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # USERS_JSON: ${{ secrets.USERS_JSON }} — replaced by Neon DB
