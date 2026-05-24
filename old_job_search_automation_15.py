@@ -891,13 +891,13 @@ def main():
     is_manual = os.getenv("IS_MANUAL", "false").lower() == "true"
 
     # Scrape all sources ONCE — then filter per user
-    # Build search terms from ALL users so every profession gets scraped
-    search_terms = []
-    for u in users:
-        terms = build_search_terms(u.get("profession", ""), ["english"])
-        for t in terms:
-            if t not in search_terms:
-                search_terms.append(t)
+    # Use first user's profession as the base search term
+    # (scraping is expensive — we fetch once and filter per user)
+    first_user   = users[0]
+    search_terms = build_search_terms(
+        first_user.get("profession", ""),
+        ["english"]
+    )
 
     print(f"\nSearch terms: {search_terms}")
     raw_jobs = fetch_all_sources(search_terms)
