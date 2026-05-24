@@ -94,60 +94,41 @@ def get_selenium_driver():
 
 
 # =============================================================================
-# 1. LOAD USERS — Neon DB (primary) → USERS_JSON (fallback)
+# 1. LOAD USERS FROM GITHUB SECRET
 # =============================================================================
 
 def load_users() -> list:
     """
-    Load users from Neon Postgres via v_users view.
-    Falls back to USERS_JSON secret for backwards compatibility.
+    Load users from USERS_JSON environment variable (GitHub Secret).
+    Falls back to a single user from EMAIL_TO for backwards compatibility.
     """
-    database_url = os.getenv("DATABASE_URL")
-    if database_url:
-        try:
-            import psycopg2
-            import psycopg2.extras
-            conn = psycopg2.connect(database_url, cursor_factory=psycopg2.extras.RealDictCursor)
-            cur = conn.cursor()
-            cur.execute("SELECT * FROM v_users WHERE is_active = TRUE")
-            rows = cur.fetchall()
-            cur.close()
-            conn.close()
-
-            if rows:
-                users = []
-                for row in rows:
-                    users.append({
-                        "name": row["full_name"],
-                        "email": row["email"],
-                        "profession": row["profession"] or "",
-                        "variants": list(row["variants"] or []),
-                        "seniority": list(row["seniority"] or []),
-                        "company_type": list(row["company_type"] or []),
-                        "city": list(row["city"] or []),
-                        "work_type": row["work_type"] or "Any",
-                        "websites": list(row["websites"] or []),
-                        "frequency": list(row["frequency"] or ["08:00"]),
-                    })
-                print(f"\nLoaded {len(users)} user(s) from Neon DB")
-                return users
-            else:
-                print("  [!] Neon DB is empty — falling back to USERS_JSON")
-
-        except Exception as e:
-            print(f"  [!] Neon DB error: {e} — falling back to USERS_JSON")
-
-    # Fallback: USERS_JSON secret
     users_json = os.getenv("USERS_JSON")
     if users_json:
         try:
             users = json.loads(users_json)
-            print(f"\nLoaded {len(users)} user(s) from USERS_JSON (fallback)")
+            print(f"\nLoaded {len(users)} user(s) from USERS_JSON")
             return users
         except json.JSONDecodeError:
-            print("  [!] USERS_JSON is invalid JSON")
+            print("  [!] USERS_JSON is invalid JSON — falling back to single user")
 
-    print("  [!] No users found — set DATABASE_URL or USERS_JSON secret")
+    # Backwards compatibility — single user mode
+    email_to = os.getenv("EMAIL_TO")
+    if email_to:
+        print("\nNo USERS_JSON found — running in single-user mode")
+        return [{
+            "name": "Job Seeker",
+            "email": email_to,
+            "profession": "customer success manager",
+            "variants": [],
+            "seniority": ["Senior"],
+            "company_type": ["B2B"],
+            "city": ["Tel Aviv"],
+            "work_type": "Hybrid",
+            "websites": [],
+            "frequency": ["08:00", "12:00", "17:00", "21:00"],
+        }]
+
+    print("  [!] No users found — set USERS_JSON or EMAIL_TO secret")
     return []
 
 
