@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Job Search Bot — Register</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap"
+        rel="stylesheet" />
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #f5f2ee;
+            --card: #ffffff;
+            --ink: #1a1714;
+            --muted: #7a756f;
+            --accent: #2d6a4f;
+            --accent-light: #e8f4f0;
+            --border: #e0dbd4;
+            --error: #c0392b;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+
+        .wrap {
+            width: 100%;
+            max-width: 580px;
+        }
+
+        .header {
+            margin-bottom: 24px;
+            animation: fadeUp 0.6s ease both;
+        }
+
+        .header .eyebrow {
+            font-size: 11px;
+            font-weight: 500;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 10px;
+        }
+
+        .header h1 {
+            font-family: 'DM Serif Display', serif;
+            font-size: 32px;
+            color: var(--ink);
+            line-height: 1.15;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            font-size: 14px;
+            color: var(--muted);
+            line-height: 1.65;
+        }
+
+        /* Mode tabs */
+        .mode-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            animation: fadeUp 0.5s ease both;
+        }
+
+        .mode-tab {
+            flex: 1;
+            padding: 11px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            color: var(--muted);
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .mode-tab.active {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 36px;
+            animation: fadeUp 0.6s 0.1s ease both;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+        }
+
+        .section-title {
+            font-size: 11px;
+            font-weight: 500;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin: 28px 0 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--accent-light);
+        }
+
+        .section-title:first-child {
+            margin-top: 0;
+        }
+
+        .field {
+            margin-bottom: 20px;
+        }
+
+        .field-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+
+        .field-label span.req {
+            color: var(--accent);
+            margin-left: 2px;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        select {
+            width: 100%;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 15px;
+            color: var(--ink);
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 16px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            appearance: none;
+        }
+
+        select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237a756f' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            padding-right: 36px;
+            cursor: pointer;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-light);
+            background: #fff;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 6px;
+            line-height: 1.5;
+        }
+
+        /* Two-column layout for selects */
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        /* Chip-style multi-select */
+        .chip-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+
+        .chip {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 9px 14px;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+            font-size: 14px;
+            color: var(--ink);
+            user-select: none;
+        }
+
+        .chip input[type="checkbox"] {
+            width: 15px;
+            height: 15px;
+            min-width: 15px;
+            padding: 0;
+            accent-color: var(--accent);
+            cursor: pointer;
+        }
+
+        .chip:has(input:checked) {
+            border-color: var(--accent);
+            background: var(--accent-light);
+        }
+
+        /* Title variants */
+        .variants-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .variant-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .variant-row input {
+            flex: 1;
+        }
+
+        .remove-btn {
+            background: none;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            width: 38px;
+            height: 44px;
+            cursor: pointer;
+            color: var(--muted);
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s, color 0.2s;
+            flex-shrink: 0;
+        }
+
+        .remove-btn:hover {
+            background: #fef2f2;
+            color: var(--error);
+            border-color: #fca5a5;
+        }
+
+        .add-btn {
+            background: none;
+            border: 1px dashed var(--border);
+            border-radius: 8px;
+            width: 100%;
+            padding: 10px;
+            cursor: pointer;
+            color: var(--muted);
+            font-size: 13px;
+            font-family: 'DM Sans', sans-serif;
+            transition: background 0.2s, border-color 0.2s;
+            margin-top: 6px;
+        }
+
+        .add-btn:hover {
+            background: var(--accent-light);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* Websites grid */
+        .websites-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .site-wrap {
+            position: relative;
+        }
+
+        .site-num {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 11px;
+            color: var(--muted);
+            font-weight: 600;
+            pointer-events: none;
+        }
+
+        .site-wrap input {
+            padding-left: 26px;
+        }
+
+        .divider {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 24px 0;
+        }
+
+        /* Edit notice */
+        .edit-notice {
+            display: none;
+            background: var(--accent-light);
+            border: 1px solid var(--accent);
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: var(--accent);
+            line-height: 1.6;
+        }
+
+        .btn {
+            width: 100%;
+            background: var(--accent);
+            color: #fff;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 15px;
+            font-weight: 500;
+            border: none;
+            border-radius: 10px;
+            padding: 15px;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.15s;
+            letter-spacing: 0.02em;
+        }
+
+        .btn:hover {
+            opacity: 0.88;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .success {
+            display: none;
+            text-align: center;
+            padding: 28px 0 8px;
+            animation: fadeUp 0.4s ease both;
+        }
+
+        .success .icon {
+            font-size: 44px;
+            margin-bottom: 14px;
+        }
+
+        .success h2 {
+            font-family: 'DM Serif Display', serif;
+            font-size: 24px;
+            color: var(--ink);
+            margin-bottom: 8px;
+        }
+
+        .success p {
+            font-size: 14px;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .error-msg {
+            display: none;
+            background: #fef2f2;
+            border: 1px solid #fca5a5;
+            color: var(--error);
+            font-size: 13px;
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-top: 12px;
+        }
+
+        .footer-note {
+            font-size: 12px;
+            color: var(--muted);
+            text-align: center;
+            margin-top: 20px;
+            line-height: 1.6;
+            animation: fadeUp 0.6s 0.2s ease both;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(14px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+
+        <div class="header">
+            <div class="eyebrow">🤖 Job Search Bot</div>
+            <h1 id="pageTitle">Get job alerts tailored to you</h1>
+            <p>Fill in your details. The bot searches your chosen job boards and sends matching roles straight to your
+                inbox.</p>
+        </div>
+
+        <div class="mode-tabs">
+            <button class="mode-tab active" onclick="switchMode('register')">📝 New Registration</button>
+            <button class="mode-tab" onclick="switchMode('edit')">✏️ Edit My Preferences</button>
+        </div>
+
+        <div class="card">
+
+            <div class="edit-notice" id="editNotice">
+                To update your preferences, enter your registered email and change any fields below. Your previous
+                settings will be replaced with what you submit here.
+            </div>
+
+            <form id="regForm">
+
+                <!-- ── 1. Personal Details ── -->
+                <div class="section-title">Personal Details</div>
+
+                <div class="field">
+                    <span class="field-label">Your name <span class="req">*</span></span>
+                    <input type="text" id="name" placeholder="e.g. Sara Cohen" required />
+                </div>
+
+                <div class="field">
+                    <span class="field-label">Your email <span class="req">*</span></span>
+                    <input type="email" id="email" placeholder="sara@gmail.com" required />
+                </div>
+
+                <!-- ── 2. Job Preferences ── -->
+                <div class="section-title">Job Preferences</div>
+
+                <div class="field">
+                    <span class="field-label">Main job title <span class="req">*</span></span>
+                    <input type="text" id="profession" placeholder="e.g. Customer Success Manager" required />
+                    <p class="hint">Your primary title — add variations below to cast a wider net.</p>
+                </div>
+
+                <div class="field">
+                    <span class="field-label">Title variants <span
+                            style="font-weight:300;text-transform:none;letter-spacing:0;">(recommended)</span></span>
+                    <div class="variants-list" id="variantsList">
+                        <div class="variant-row">
+                            <input type="text" name="variant" placeholder="e.g. Customer Success Lead" />
+                            <button type="button" class="remove-btn" onclick="removeVariant(this)">×</button>
+                        </div>
+                        <div class="variant-row">
+                            <input type="text" name="variant" placeholder="e.g. Account Manager" />
+                            <button type="button" class="remove-btn" onclick="removeVariant(this)">×</button>
+                        </div>
+                        <div class="variant-row">
+                            <input type="text" name="variant" placeholder="e.g. Client Success Manager" />
+                            <button type="button" class="remove-btn" onclick="removeVariant(this)">×</button>
+                        </div>
+                    </div>
+                    <button type="button" class="add-btn" onclick="addVariant()">+ Add another variant</button>
+                    <p class="hint">Leave blank to let the bot generate variants automatically using AI.</p>
+                </div>
+
+                <!-- Seniority level -->
+                <div class="field">
+                    <span class="field-label">Seniority level <span class="req">*</span></span>
+                    <div class="chip-group">
+                        <label class="chip"><input type="checkbox" name="seniority" value="Junior" /> Junior</label>
+                        <label class="chip"><input type="checkbox" name="seniority" value="Senior" /> Senior</label>
+                        <label class="chip"><input type="checkbox" name="seniority" value="Executive" />
+                            Executive</label>
+                        <label class="chip"><input type="checkbox" name="seniority" value="C-Level" /> C-Level</label>
+                    </div>
+                </div>
+
+                <!-- Company type -->
+                <div class="field">
+                    <span class="field-label">Company type <span class="req">*</span></span>
+                    <div class="chip-group">
+                        <label class="chip"><input type="checkbox" name="companyType" value="B2B" /> B2B</label>
+                        <label class="chip"><input type="checkbox" name="companyType" value="B2C" /> B2C</label>
+                        <label class="chip"><input type="checkbox" name="companyType" value="B2G" /> B2G</label>
+                    </div>
+                </div>
+
+                <!-- ── 3. Location ── -->
+                <div class="section-title">Location</div>
+
+                <div class="field two-col">
+                    <div>
+                        <span class="field-label">City <span class="req">*</span></span>
+                        <p class="hint" style="margin-bottom:6px;">Hold Ctrl (PC) or &#8984; (Mac) to select multiple
+                            cities.</p>
+                        <select id="city" multiple required style="height:160px;padding:8px;">
+
+                            <optgroup label="Center">
+                                <option>Tel Aviv</option>
+                                <option>Ramat Gan</option>
+                                <option>Petah Tikva</option>
+                                <option>Bnei Brak</option>
+                                <option>Herzliya</option>
+                                <option>Ra'anana</option>
+                                <option>Hod HaSharon</option>
+                                <option>Kfar Saba</option>
+                                <option>Netanya</option>
+                                <option>Rehovot</option>
+                                <option>Rishon LeZion</option>
+                                <option>Holon</option>
+                                <option>Bat Yam</option>
+                                <option>Lod</option>
+                                <option>Ramla</option>
+                            </optgroup>
+                            <optgroup label="Jerusalem">
+                                <option>Jerusalem</option>
+                                <option>Modiin</option>
+                                <option>Beit Shemesh</option>
+                            </optgroup>
+                            <optgroup label="North">
+                                <option>Haifa</option>
+                                <option>Caesarea</option>
+                                <option>Yokneam</option>
+                                <option>Nazareth</option>
+                                <option>Tiberias</option>
+                            </optgroup>
+                            <optgroup label="South">
+                                <option>Beer Sheva</option>
+                                <option>Ashdod</option>
+                                <option>Ashkelon</option>
+                                <option>Eilat</option>
+                            </optgroup>
+                            <optgroup label="Other">
+                                <option>No preference</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div>
+                        <span class="field-label">Work type <span class="req">*</span></span>
+                        <select id="workType" required>
+                            <option value="" disabled selected>Select type</option>
+                            <option value="On-site">On-site</option>
+                            <option value="Hybrid">Hybrid</option>
+                            <option value="Remote">Remote</option>
+                            <option value="Remote or Hybrid">Remote or Hybrid</option>
+                            <option value="Any">Any (no preference)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- ── 4. Job Boards ── -->
+                <div class="section-title">Job Boards to Search</div>
+
+                <div class="field">
+                    <p class="hint" style="margin-bottom:12px;">Enter up to 5 websites. Leave blank to use the defaults:
+                        LinkedIn, Indeed IL, StartupForStartup, Nefesh B'Nefesh, JobShop.</p>
+                    <div class="websites-grid">
+                        <div class="site-wrap">
+                            <span class="site-num">1</span>
+                            <input type="text" id="site1" placeholder="linkedin.com" />
+                        </div>
+                        <div class="site-wrap">
+                            <span class="site-num">2</span>
+                            <input type="text" id="site2" placeholder="indeed.com" />
+                        </div>
+                        <div class="site-wrap">
+                            <span class="site-num">3</span>
+                            <input type="text" id="site3" placeholder="startupforstartup.com" />
+                        </div>
+                        <div class="site-wrap">
+                            <span class="site-num">4</span>
+                            <input type="text" id="site4" placeholder="nbn.org.il" />
+                        </div>
+                        <div class="site-wrap">
+                            <span class="site-num">5</span>
+                            <input type="text" id="site5" placeholder="jobshop.co.il" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── 5. Alert Frequency ── -->
+                <div class="section-title">Alert Frequency</div>
+
+                <div class="field">
+                    <span class="field-label">When do you want alerts? <span class="req">*</span></span>
+                    <div class="chip-group">
+                        <label class="chip"><input type="checkbox" name="frequency" value="08:00" /> 8:00 AM</label>
+                        <label class="chip"><input type="checkbox" name="frequency" value="12:00" /> 12:00 PM</label>
+                        <label class="chip"><input type="checkbox" name="frequency" value="17:00" /> 5:00 PM</label>
+                        <label class="chip"><input type="checkbox" name="frequency" value="21:00" /> 9:00 PM</label>
+                    </div>
+                    <p class="hint">Select one or more. Runs Monday–Friday (Israel time).</p>
+                </div>
+
+                <hr class="divider" />
+
+                <button type="submit" class="btn" id="submitBtn">Send my registration →</button>
+                <div class="error-msg" id="errorMsg"></div>
+
+                <div class="success" id="successMsg">
+                    <div class="icon">✅</div>
+                    <h2 id="successTitle">You're registered!</h2>
+                    <p id="successText">Your details have been sent. You'll receive job alerts at your chosen times once
+                        confirmed.</p>
+                </div>
+
+            </form>
+        </div>
+
+        <p class="footer-note">
+            Your data is kept private and used only to send you job alerts.<br />
+            To make changes, use the "Edit My Preferences" tab above.
+        </p>
+
+    </div>
+
+    <script>
+        let currentMode = 'register';
+
+        function switchMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.mode-tab').forEach((t, i) => {
+                t.classList.toggle('active', (mode === 'register' && i === 0) || (mode === 'edit' && i === 1));
+            });
+            const isEdit = mode === 'edit';
+            document.getElementById('editNotice').style.display = isEdit ? 'block' : 'none';
+            document.getElementById('submitBtn').textContent = isEdit ? 'Update my preferences →' : 'Send my registration →';
+            document.getElementById('pageTitle').textContent = isEdit ? 'Update your preferences' : 'Get job alerts tailored to you';
+        }
+
+        function addVariant() {
+            const list = document.getElementById('variantsList');
+            const row = document.createElement('div');
+            row.className = 'variant-row';
+            row.innerHTML = `
+      <input type="text" name="variant" placeholder="e.g. Senior Account Manager" />
+      <button type="button" class="remove-btn" onclick="removeVariant(this)">×</button>
+    `;
+            list.appendChild(row);
+            row.querySelector('input').focus();
+        }
+
+        function removeVariant(btn) {
+            const list = document.getElementById('variantsList');
+            if (list.children.length > 1) {
+                btn.closest('.variant-row').remove();
+            } else {
+                btn.closest('.variant-row').querySelector('input').value = '';
+            }
+        }
+
+        const API_URL = 'https://job-search-bot-n5tm.onrender.com';
+
+        // Load professions from API on page load
+        async function loadProfessions() {
+            try {
+                const res = await fetch(`${API_URL}/professions`);
+                const professions = await res.json();
+                // Merge with hardcoded list, deduplicate
+                const existing = KNOWN_PROFESSIONS.map(p => p.toLowerCase());
+                professions.forEach(p => {
+                    if (!existing.includes(p.profession.toLowerCase())) {
+                        KNOWN_PROFESSIONS.push(p.profession);
+                        existing.push(p.profession.toLowerCase());
+                    }
+                });
+            } catch (e) {
+                console.log('Could not load professions from API, using local list');
+            }
+        }
+        loadProfessions();
+
+        // Load variants from API when profession is selected
+        async function loadVariantsFromAPI(professionName) {
+            try {
+                const res = await fetch(`${API_URL}/professions`);
+                const professions = await res.json();
+                const match = professions.find(p =>
+                    p.profession.toLowerCase() === professionName.toLowerCase()
+                );
+                if (!match) return null;
+                const vRes = await fetch(`${API_URL}/professions/${match.id}/variants`);
+                return await vRes.json();
+            } catch (e) {
+                return null;
+            }
+        }
+
+        // Override selectProfession to also try API variants
+        const _origSelectProfession = selectProfession;
+        async function selectProfession(profession) {
+            document.getElementById('profession').value = profession;
+            document.getElementById('professionDropdown').classList.remove('open');
+            // Try API first, fall back to local
+            const apiVariants = await loadVariantsFromAPI(profession);
+            if (apiVariants && apiVariants.length > 0) {
+                const list = document.getElementById('variantsList');
+                list.innerHTML = '';
+                apiVariants.forEach(v => {
+                    const row = document.createElement('div');
+                    row.className = 'variant-row';
+                    row.innerHTML = `
+                        <input type="text" name="variant" value="${v}" />
+                        <button type="button" class="remove-btn" onclick="removeVariant(this)">×</button>
+                    `;
+                    list.appendChild(row);
+                });
+                const empty = document.createElement('div');
+                empty.className = 'variant-row';
+                empty.innerHTML = `
+                    <input type="text" name="variant" placeholder="e.g. Add another variant" />
+                    <button type="button" class="remove-btn" onclick="removeVariant(this)">×</button>
+                `;
+                list.appendChild(empty);
+            } else {
+                suggestVariantsForProfession(profession);
+            }
+        }
+
+        document.getElementById('regForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const btn = document.getElementById('submitBtn');
+            const errorMsg = document.getElementById('errorMsg');
+            errorMsg.style.display = 'none';
+
+            const variants = [...document.querySelectorAll('#variantsList input[name="variant"]')]
+                .map(i => i.value.trim()).filter(Boolean);
+            const websites = ['site1', 'site2', 'site3', 'site4', 'site5']
+                .map(id => document.getElementById(id).value.trim()).filter(Boolean);
+            const frequency = [...document.querySelectorAll('input[name="frequency"]:checked')].map(c => c.value);
+            const seniority = [...document.querySelectorAll('input[name="seniority"]:checked')].map(c => c.value);
+            const companyType = [...document.querySelectorAll('input[name="companyType"]:checked')].map(c => c.value);
+
+            const nameVal = document.getElementById('name').value.trim();
+            const nameParts = nameVal.split(' ');
+            const firstName = nameParts[0] || '';
+            const lastName = nameParts.slice(1).join(' ') || '';
+            const email = document.getElementById('email').value.trim();
+            const profession = document.getElementById('profession').value.trim();
+            const city = [...document.getElementById('city').selectedOptions].map(o => o.value);
+            const defaultWebsites = ['linkedin.com', 'il.indeed.com', 'startupforstartup.com', 'nbn.org.il', 'jobshop.co.il'];
+
+            const data = {
+                first_name: firstName,
+                last_name: lastName,
+                email: email,
+                profession: profession,
+                professions: [profession],
+                variants: variants,
+                seniority: seniority,
+                company_type: companyType,
+                city: city,
+                work_type: document.getElementById('workType').value,
+                websites: websites.length ? websites : defaultWebsites,
+                frequency: frequency,
+            };
+
+            // Validation
+            if (!nameVal || !email || !profession) {
+                errorMsg.textContent = 'Please fill in name, email and job title.';
+                errorMsg.style.display = 'block'; return;
+            }
+            if (city.length === 0 || !data.work_type) {
+                errorMsg.textContent = 'Please select a city and work type.';
+                errorMsg.style.display = 'block'; return;
+            }
+            if (seniority.length === 0) {
+                errorMsg.textContent = 'Please select at least one seniority level.';
+                errorMsg.style.display = 'block'; return;
+            }
+            if (companyType.length === 0) {
+                errorMsg.textContent = 'Please select at least one company type.';
+                errorMsg.style.display = 'block'; return;
+            }
+            if (frequency.length === 0) {
+                errorMsg.textContent = 'Please select at least one alert time.';
+                errorMsg.style.display = 'block'; return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Sending…';
+
+            try {
+                const isEdit = currentMode === 'edit';
+                const url = isEdit
+                    ? `${API_URL}/user/${encodeURIComponent(email)}`
+                    : `${API_URL}/register`;
+                const res = await fetch(url, {
+                    method: isEdit ? 'PUT' : 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data),
+                });
+
+                if (res.ok) {
+                    document.querySelectorAll('.field, .divider, .section-title, .edit-notice').forEach(el => el.style.display = 'none');
+                    btn.style.display = 'none';
+                    document.getElementById('successTitle').textContent =
+                        currentMode === 'edit' ? 'Preferences updated!' : "You're registered!";
+                    document.getElementById('successText').textContent =
+                        currentMode === 'edit'
+                            ? 'Your updated preferences have been sent and will be applied shortly.'
+                            : "Your details have been sent. You'll receive job alerts at your chosen times once confirmed.";
+                    document.getElementById('successMsg').style.display = 'block';
+                } else {
+                    throw new Error();
+                }
+            } catch {
+                errorMsg.textContent = 'Something went wrong. Please try again.';
+                errorMsg.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = currentMode === 'edit' ? 'Update my preferences →' : 'Send my registration →';
+            }
+        });
+    </script>
+</body>
+
+</html>

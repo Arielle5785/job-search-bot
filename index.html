@@ -412,6 +412,297 @@
                 transform: translateY(0);
             }
         }
+
+
+        /* Profession autocomplete dropdown */
+        .profession-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.10);
+            z-index: 100;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+
+        .profession-dropdown.open {
+            display: block;
+        }
+
+        .dropdown-item {
+            padding: 11px 16px;
+            font-size: 14px;
+            cursor: pointer;
+            color: var(--ink);
+            transition: background 0.15s;
+        }
+
+        .dropdown-item:hover,
+        .dropdown-item.active {
+            background: var(--accent-light);
+            color: var(--accent);
+        }
+
+        /* ── Edit Modal ─────────────────────────────────────────────────── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 15, 15, 0.5);
+            backdrop-filter: blur(5px);
+            z-index: 999;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-overlay.open {
+            display: flex;
+        }
+
+        .modal-box {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 36px;
+            width: 100%;
+            max-width: 520px;
+            box-shadow: 0 32px 80px rgba(0, 0, 0, 0.15);
+            animation: modalIn 0.22s ease both;
+            position: relative;
+        }
+
+        .modal-box.wide {
+            max-width: 640px;
+            max-height: 88vh;
+            overflow-y: auto;
+        }
+
+        @keyframes modalIn {
+            from {
+                opacity: 0;
+                transform: translateY(-18px) scale(0.97);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 16px;
+            right: 18px;
+            background: none;
+            border: none;
+            font-size: 22px;
+            color: var(--muted);
+            cursor: pointer;
+            line-height: 1;
+            padding: 4px;
+        }
+
+        .modal-close:hover {
+            color: var(--ink);
+        }
+
+        .modal-eyebrow {
+            font-size: 11px;
+            font-weight: 500;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 8px;
+        }
+
+        .modal-box h2 {
+            font-family: 'DM Serif Display', serif;
+            font-size: 22px;
+            color: var(--ink);
+            margin-bottom: 6px;
+        }
+
+        .modal-box p.modal-sub {
+            font-size: 13px;
+            color: var(--muted);
+            line-height: 1.6;
+            margin-bottom: 22px;
+        }
+
+        .modal-field {
+            margin-bottom: 16px;
+        }
+
+        .modal-field label {
+            display: block;
+            font-size: 11px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+
+        .modal-error {
+            display: none;
+            background: #fef2f2;
+            border: 1px solid #fca5a5;
+            color: var(--error);
+            font-size: 12px;
+            border-radius: 8px;
+            padding: 9px 13px;
+            margin-bottom: 14px;
+        }
+
+        .modal-btns {
+            display: flex;
+            gap: 10px;
+            margin-top: 22px;
+        }
+
+        .modal-btns .btn {
+            margin: 0;
+        }
+
+        .btn-ghost {
+            flex: 1;
+            background: var(--bg);
+            color: var(--muted);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 13px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-ghost:hover {
+            background: var(--border);
+            color: var(--ink);
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255, 255, 255, 0.35);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Edit form inside modal */
+        .modal-section-title {
+            font-size: 10px;
+            font-weight: 500;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin: 22px 0 12px;
+            padding-bottom: 7px;
+            border-bottom: 1px solid var(--accent-light);
+        }
+
+        .modal-section-title:first-of-type {
+            margin-top: 4px;
+        }
+
+        .modal-two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        /* Tag pills for edit modal */
+        .tag-field {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 8px 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            min-height: 46px;
+            background: var(--bg);
+            cursor: text;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .tag-field:focus-within {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-light);
+            background: #fff;
+        }
+
+        .tag-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: var(--accent-light);
+            color: var(--accent);
+            border-radius: 6px;
+            padding: 4px 10px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .tag-pill .rm {
+            cursor: pointer;
+            font-size: 15px;
+            line-height: 1;
+            opacity: 0.55;
+        }
+
+        .tag-pill .rm:hover {
+            opacity: 1;
+        }
+
+        .tag-add-input {
+            border: none !important;
+            background: transparent !important;
+            padding: 4px 6px !important;
+            font-size: 13px !important;
+            min-width: 120px;
+            flex: 1;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        .modal-user-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--accent-light);
+            color: var(--accent);
+            border-radius: 8px;
+            padding: 7px 12px;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .save-status {
+            text-align: center;
+            font-size: 13px;
+            font-weight: 500;
+            min-height: 20px;
+            margin-top: 10px;
+        }
     </style>
 </head>
 
@@ -427,7 +718,7 @@
 
         <div class="mode-tabs">
             <button class="mode-tab active" onclick="switchMode('register')">📝 New Registration</button>
-            <button class="mode-tab" onclick="switchMode('edit')">✏️ Edit My Preferences</button>
+            <button class="mode-tab" id="tabEdit" onclick="openEditModal()">✏️ Edit My Preferences</button>
         </div>
 
         <div class="card">
@@ -457,7 +748,9 @@
 
                 <div class="field">
                     <span class="field-label">Main job title <span class="req">*</span></span>
-                    <input type="text" id="profession" placeholder="e.g. Customer Success Manager" required />
+                    <input type="text" id="profession" placeholder="e.g. Customer Success Manager" required
+                        autocomplete="off" />
+                    <div id="professionDropdown" class="profession-dropdown"></div>
                     <p class="hint">Your primary title — add variations below to cast a wider net.</p>
                 </div>
 
@@ -634,83 +927,79 @@
     </div>
 
     <script>
-        let currentMode = 'register';
-
-        function switchMode(mode) {
-            currentMode = mode;
-            document.querySelectorAll('.mode-tab').forEach((t, i) => {
-                t.classList.toggle('active', (mode === 'register' && i === 0) || (mode === 'edit' && i === 1));
-            });
-            const isEdit = mode === 'edit';
-            document.getElementById('editNotice').style.display = isEdit ? 'block' : 'none';
-            document.getElementById('submitBtn').textContent = isEdit ? 'Update my preferences →' : 'Send my registration →';
-            document.getElementById('pageTitle').textContent = isEdit ? 'Update your preferences' : 'Get job alerts tailored to you';
-        }
-
-        function addVariant() {
-            const list = document.getElementById('variantsList');
-            const row = document.createElement('div');
-            row.className = 'variant-row';
-            row.innerHTML = `
-      <input type="text" name="variant" placeholder="e.g. Senior Account Manager" />
-      <button type="button" class="remove-btn" onclick="removeVariant(this)">×</button>
-    `;
-            list.appendChild(row);
-            row.querySelector('input').focus();
-        }
-
-        function removeVariant(btn) {
-            const list = document.getElementById('variantsList');
-            if (list.children.length > 1) {
-                btn.closest('.variant-row').remove();
-            } else {
-                btn.closest('.variant-row').querySelector('input').value = '';
-            }
-        }
-
+        // ── Config ────────────────────────────────────────────────────────
         const API_URL = 'https://job-search-bot-n5tm.onrender.com';
 
-        // Load professions from API on page load
-        async function loadProfessions() {
-            try {
-                const res = await fetch(`${API_URL}/professions`);
-                const professions = await res.json();
-                // Merge with hardcoded list, deduplicate
-                const existing = KNOWN_PROFESSIONS.map(p => p.toLowerCase());
-                professions.forEach(p => {
-                    if (!existing.includes(p.profession.toLowerCase())) {
-                        KNOWN_PROFESSIONS.push(p.profession);
-                        existing.push(p.profession.toLowerCase());
-                    }
+        // ── Known professions (local fallback) ────────────────────────────
+        const KNOWN_PROFESSIONS = [
+            'Customer Success Manager', 'Account Manager', 'Account Executive',
+            'Sales Development Representative', 'Business Development Manager',
+            'Product Manager', 'Project Manager', 'Marketing Manager',
+            'Operations Manager', 'HR Manager', 'Recruiter', 'Data Analyst',
+            'Software Engineer', 'Frontend Developer', 'Backend Developer',
+            'Full Stack Developer', 'DevOps Engineer', 'QA Engineer',
+            'UX Designer', 'UI Designer', 'Graphic Designer', 'Content Writer',
+            'SEO Specialist', 'Social Media Manager', 'Growth Hacker',
+            'Customer Support', 'Team Lead', 'VP Sales', 'VP Marketing',
+        ];
+
+        const PROFESSION_VARIANTS = {
+            'Customer Success Manager': ['Customer Success Lead', 'CSM', 'Account Manager', 'Client Success Manager', 'Customer Experience Manager'],
+            'Account Manager': ['Account Executive', 'Client Manager', 'Key Account Manager', 'Sales Manager'],
+            'Software Engineer': ['Software Developer', 'SWE', 'Programmer', 'Backend Engineer', 'Frontend Engineer'],
+        };
+
+        // ── Registration mode (register tab stays as-is) ──────────────────
+        document.getElementById('tabRegister').addEventListener('click', function () {
+            this.classList.add('active');
+            document.getElementById('tabEdit').classList.remove('active');
+        });
+
+        // ── Profession autocomplete ───────────────────────────────────────
+        const profInput = document.getElementById('profession');
+        const profDropdown = document.getElementById('professionDropdown');
+
+        if (profInput && profDropdown) {
+            profInput.addEventListener('input', function () {
+                const q = this.value.toLowerCase().trim();
+                profDropdown.innerHTML = '';
+                if (!q) { profDropdown.classList.remove('open'); return; }
+                const matches = KNOWN_PROFESSIONS.filter(p => p.toLowerCase().includes(q));
+                if (!matches.length) { profDropdown.classList.remove('open'); return; }
+                matches.slice(0, 8).forEach(p => {
+                    const div = document.createElement('div');
+                    div.className = 'dropdown-item';
+                    div.textContent = p;
+                    div.onclick = () => selectProfession(p);
+                    profDropdown.appendChild(div);
                 });
-            } catch (e) {
-                console.log('Could not load professions from API, using local list');
-            }
+                profDropdown.classList.add('open');
+            });
+            document.addEventListener('click', e => {
+                if (!profInput.contains(e.target) && !profDropdown.contains(e.target))
+                    profDropdown.classList.remove('open');
+            });
+            profInput.addEventListener('keydown', e => {
+                const items = profDropdown.querySelectorAll('.dropdown-item');
+                const active = profDropdown.querySelector('.dropdown-item.active');
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    const next = active ? active.nextElementSibling : items[0];
+                    if (next) { active && active.classList.remove('active'); next.classList.add('active'); }
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    const prev = active ? active.previousElementSibling : items[items.length - 1];
+                    if (prev) { active && active.classList.remove('active'); prev.classList.add('active'); }
+                } else if (e.key === 'Enter' && active) {
+                    e.preventDefault(); selectProfession(active.textContent);
+                }
+            });
         }
-        loadProfessions();
 
-        // Load variants from API when profession is selected
-        async function loadVariantsFromAPI(professionName) {
-            try {
-                const res = await fetch(`${API_URL}/professions`);
-                const professions = await res.json();
-                const match = professions.find(p =>
-                    p.profession.toLowerCase() === professionName.toLowerCase()
-                );
-                if (!match) return null;
-                const vRes = await fetch(`${API_URL}/professions/${match.id}/variants`);
-                return await vRes.json();
-            } catch (e) {
-                return null;
-            }
-        }
-
-        // Override selectProfession to also try API variants
-        const _origSelectProfession = selectProfession;
         async function selectProfession(profession) {
             document.getElementById('profession').value = profession;
-            document.getElementById('professionDropdown').classList.remove('open');
-            // Try API first, fall back to local
+            if (document.getElementById('professionDropdown'))
+                document.getElementById('professionDropdown').classList.remove('open');
             const apiVariants = await loadVariantsFromAPI(profession);
             if (apiVariants && apiVariants.length > 0) {
                 const list = document.getElementById('variantsList');
@@ -718,27 +1007,68 @@
                 apiVariants.forEach(v => {
                     const row = document.createElement('div');
                     row.className = 'variant-row';
-                    row.innerHTML = `
-                        <input type="text" name="variant" value="${v}" />
-                        <button type="button" class="remove-btn" onclick="removeVariant(this)">×</button>
-                    `;
+                    row.innerHTML = `<input type="text" name="variant" value="${v}" /><button type="button" class="remove-btn" onclick="removeVariant(this)">×</button>`;
                     list.appendChild(row);
                 });
                 const empty = document.createElement('div');
                 empty.className = 'variant-row';
-                empty.innerHTML = `
-                    <input type="text" name="variant" placeholder="e.g. Add another variant" />
-                    <button type="button" class="remove-btn" onclick="removeVariant(this)">×</button>
-                `;
+                empty.innerHTML = `<input type="text" name="variant" placeholder="Add another variant" /><button type="button" class="remove-btn" onclick="removeVariant(this)">×</button>`;
                 list.appendChild(empty);
-            } else {
-                suggestVariantsForProfession(profession);
+            } else if (PROFESSION_VARIANTS[profession]) {
+                const list = document.getElementById('variantsList');
+                list.innerHTML = '';
+                PROFESSION_VARIANTS[profession].forEach(v => {
+                    const row = document.createElement('div');
+                    row.className = 'variant-row';
+                    row.innerHTML = `<input type="text" name="variant" value="${v}" /><button type="button" class="remove-btn" onclick="removeVariant(this)">×</button>`;
+                    list.appendChild(row);
+                });
             }
         }
 
+        function addVariant() {
+            const list = document.getElementById('variantsList');
+            const row = document.createElement('div');
+            row.className = 'variant-row';
+            row.innerHTML = `<input type="text" name="variant" placeholder="e.g. Senior Account Manager" /><button type="button" class="remove-btn" onclick="removeVariant(this)">×</button>`;
+            list.appendChild(row);
+            row.querySelector('input').focus();
+        }
+
+        function removeVariant(btn) {
+            const list = document.getElementById('variantsList');
+            if (list.children.length > 1) btn.closest('.variant-row').remove();
+            else btn.closest('.variant-row').querySelector('input').value = '';
+        }
+
+        async function loadProfessions() {
+            try {
+                const res = await fetch(`${API_URL}/professions`);
+                const professions = await res.json();
+                const existing = KNOWN_PROFESSIONS.map(p => p.toLowerCase());
+                professions.forEach(p => {
+                    if (!existing.includes(p.profession.toLowerCase())) {
+                        KNOWN_PROFESSIONS.push(p.profession);
+                    }
+                });
+            } catch (e) { /* use local list */ }
+        }
+        loadProfessions();
+
+        async function loadVariantsFromAPI(professionName) {
+            try {
+                const res = await fetch(`${API_URL}/professions`);
+                const professions = await res.json();
+                const match = professions.find(p => p.profession.toLowerCase() === professionName.toLowerCase());
+                if (!match) return null;
+                const vRes = await fetch(`${API_URL}/professions/${match.id}/variants`);
+                return await vRes.json();
+            } catch (e) { return null; }
+        }
+
+        // ── Registration form submit ───────────────────────────────────────
         document.getElementById('regForm').addEventListener('submit', async function (e) {
             e.preventDefault();
-
             const btn = document.getElementById('submitBtn');
             const errorMsg = document.getElementById('errorMsg');
             errorMsg.style.display = 'none';
@@ -750,7 +1080,6 @@
             const frequency = [...document.querySelectorAll('input[name="frequency"]:checked')].map(c => c.value);
             const seniority = [...document.querySelectorAll('input[name="seniority"]:checked')].map(c => c.value);
             const companyType = [...document.querySelectorAll('input[name="companyType"]:checked')].map(c => c.value);
-
             const nameVal = document.getElementById('name').value.trim();
             const nameParts = nameVal.split(' ');
             const firstName = nameParts[0] || '';
@@ -760,27 +1089,11 @@
             const city = [...document.getElementById('city').selectedOptions].map(o => o.value);
             const defaultWebsites = ['linkedin.com', 'il.indeed.com', 'startupforstartup.com', 'nbn.org.il', 'jobshop.co.il'];
 
-            const data = {
-                first_name: firstName,
-                last_name: lastName,
-                email: email,
-                profession: profession,
-                professions: [profession],
-                variants: variants,
-                seniority: seniority,
-                company_type: companyType,
-                city: city,
-                work_type: document.getElementById('workType').value,
-                websites: websites.length ? websites : defaultWebsites,
-                frequency: frequency,
-            };
-
-            // Validation
             if (!nameVal || !email || !profession) {
                 errorMsg.textContent = 'Please fill in name, email and job title.';
                 errorMsg.style.display = 'block'; return;
             }
-            if (city.length === 0 || !data.work_type) {
+            if (city.length === 0 || !document.getElementById('workType').value) {
                 errorMsg.textContent = 'Please select a city and work type.';
                 errorMsg.style.display = 'block'; return;
             }
@@ -798,40 +1111,355 @@
             }
 
             btn.disabled = true;
-            btn.textContent = 'Sending…';
+            btn.innerHTML = '<span class="spinner"></span>Sending…';
 
             try {
-                const isEdit = currentMode === 'edit';
-                const url = isEdit
-                    ? `${API_URL}/user/${encodeURIComponent(email)}`
-                    : `${API_URL}/register`;
-                const res = await fetch(url, {
-                    method: isEdit ? 'PUT' : 'POST',
+                const data = {
+                    first_name: firstName, last_name: lastName, email,
+                    profession, professions: [profession], variants, seniority,
+                    company_type: companyType, city,
+                    work_type: document.getElementById('workType').value,
+                    websites: websites.length ? websites : defaultWebsites,
+                    frequency,
+                };
+                const res = await fetch(`${API_URL}/register`, {
+                    method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data),
                 });
-
                 if (res.ok) {
-                    document.querySelectorAll('.field, .divider, .section-title, .edit-notice').forEach(el => el.style.display = 'none');
+                    document.querySelectorAll('.field, .divider, .section-title').forEach(el => el.style.display = 'none');
                     btn.style.display = 'none';
-                    document.getElementById('successTitle').textContent =
-                        currentMode === 'edit' ? 'Preferences updated!' : "You're registered!";
-                    document.getElementById('successText').textContent =
-                        currentMode === 'edit'
-                            ? 'Your updated preferences have been sent and will be applied shortly.'
-                            : "Your details have been sent. You'll receive job alerts at your chosen times once confirmed.";
+                    document.getElementById('successTitle').textContent = "You're registered!";
+                    document.getElementById('successText').textContent = "Your details have been saved. You'll receive job alerts at your chosen times.";
                     document.getElementById('successMsg').style.display = 'block';
                 } else {
-                    throw new Error();
+                    const err = await res.json().catch(() => ({}));
+                    if (res.status === 409) {
+                        errorMsg.textContent = 'This email is already registered. Use "Edit My Preferences" to update.';
+                    } else {
+                        errorMsg.textContent = err.error || 'Something went wrong. Please try again.';
+                    }
+                    errorMsg.style.display = 'block';
+                    btn.disabled = false;
+                    btn.textContent = 'Send my registration →';
                 }
             } catch {
-                errorMsg.textContent = 'Something went wrong. Please try again.';
+                errorMsg.textContent = 'Could not connect. Please try again.';
                 errorMsg.style.display = 'block';
                 btn.disabled = false;
-                btn.textContent = currentMode === 'edit' ? 'Update my preferences →' : 'Send my registration →';
+                btn.textContent = 'Send my registration →';
             }
         });
+
+        // ══ EDIT MODAL ════════════════════════════════════════════════════
+
+        let _editEmail = '';
+        // tag sets keyed by field name
+        const _tags = { ef_variants: new Set(), ef_seniority: new Set(), ef_company: new Set(), ef_locations: new Set() };
+
+        function openEditModal() {
+            document.getElementById('editModalOverlay').classList.add('open');
+            showEditStep1();
+            setTimeout(() => document.getElementById('editLookupEmail').focus(), 80);
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModalOverlay').classList.remove('open');
+            document.getElementById('editLookupEmail').value = '';
+            document.getElementById('editLookupError').style.display = 'none';
+            document.getElementById('editSaveStatus').textContent = '';
+            // reset tab highlight
+            document.getElementById('tabEdit').classList.remove('active');
+            document.getElementById('tabRegister').classList.add('active');
+        }
+
+        function showEditStep1() {
+            document.getElementById('editStep1').style.display = '';
+            document.getElementById('editStep2').style.display = 'none';
+        }
+
+        // Close on backdrop click
+        document.getElementById('editModalOverlay').addEventListener('click', function (e) {
+            if (e.target === this) closeEditModal();
+        });
+
+        // ── Lookup user ───────────────────────────────────────────────────
+        async function lookupUser() {
+            const email = document.getElementById('editLookupEmail').value.trim().toLowerCase();
+            const errEl = document.getElementById('editLookupError');
+            const btn = document.getElementById('editLookupBtn');
+
+            errEl.style.display = 'none';
+            if (!email || !email.includes('@')) {
+                errEl.textContent = 'Please enter a valid email address.';
+                errEl.style.display = 'block'; return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span>Looking up…';
+
+            try {
+                const res = await fetch(`${API_URL}/user/${encodeURIComponent(email)}`);
+                if (res.status === 404) {
+                    errEl.textContent = 'No account found for that email. Check the address or register first.';
+                    errEl.style.display = 'block';
+                    btn.disabled = false; btn.textContent = 'Load my profile →'; return;
+                }
+                if (!res.ok) throw new Error('Server error ' + res.status);
+
+                const data = await res.json();
+                _editEmail = email;
+                populateEditForm(data);
+                document.getElementById('editStep1').style.display = 'none';
+                document.getElementById('editStep2').style.display = '';
+
+            } catch (err) {
+                errEl.textContent = 'Could not connect to server. Please try again.';
+                errEl.style.display = 'block';
+            } finally {
+                btn.disabled = false; btn.textContent = 'Load my profile →';
+            }
+        }
+
+        // ── Populate edit form from API data ──────────────────────────────
+        function populateEditForm(data) {
+            document.getElementById('editUserBadge').textContent = '📧 ' + _editEmail;
+            document.getElementById('ef_first_name').value = data.first_name || '';
+            document.getElementById('ef_last_name').value = data.last_name || '';
+            document.getElementById('ef_profession').value = data.profession || (data.professions || [])[0] || '';
+
+            // Work type
+            const wt = document.getElementById('ef_work_type');
+            if (data.work_type) wt.value = data.work_type;
+
+            // Tag fields
+            _tags.ef_variants = new Set(data.variants || []);
+            _tags.ef_seniority = new Set(data.seniority || []);
+            _tags.ef_company = new Set(data.company_type || data.company_types || []);
+            _tags.ef_locations = new Set(data.city || data.locations || []);
+            renderAllTags();
+
+            // Frequency checkboxes
+            const freqVals = new Set(data.frequency || data.schedule || []);
+            document.querySelectorAll('input[name="ef_freq"]').forEach(cb => {
+                cb.checked = freqVals.has(cb.value);
+            });
+        }
+
+        // ── Tag rendering helpers ─────────────────────────────────────────
+        function renderAllTags() {
+            ['ef_variants', 'ef_seniority', 'ef_company', 'ef_locations'].forEach(renderTags);
+        }
+
+        function renderTags(key) {
+            const field = document.getElementById(key + '_field');
+            const input = document.getElementById(key + '_input');
+            // remove old pills
+            field.querySelectorAll('.tag-pill').forEach(p => p.remove());
+            _tags[key].forEach(val => {
+                const pill = document.createElement('span');
+                pill.className = 'tag-pill';
+                pill.innerHTML = `${val} <span class="rm" onclick="removeTag('${key}','${val.replace(/'/g, "\'")}')">×</span>`;
+                field.insertBefore(pill, input);
+            });
+        }
+
+        function removeTag(key, val) {
+            _tags[key].delete(val);
+            renderTags(key);
+        }
+
+        function tagInputKey(event, inputId, key) {
+            if (event.key !== 'Enter' && event.key !== ',') return;
+            event.preventDefault();
+            const input = document.getElementById(inputId);
+            const val = input.value.trim().replace(/,$/, '');
+            if (!val) return;
+            _tags[key].add(val);
+            renderTags(key);
+            input.value = '';
+        }
+
+        // ── Save edited user ──────────────────────────────────────────────
+        async function saveUser() {
+            const statusEl = document.getElementById('editSaveStatus');
+            const errEl = document.getElementById('editSaveError');
+            const btn = document.getElementById('editSaveBtn');
+
+            errEl.style.display = 'none';
+            statusEl.textContent = '';
+
+            const firstName = document.getElementById('ef_first_name').value.trim();
+            const lastName = document.getElementById('ef_last_name').value.trim();
+            if (!firstName || !lastName) {
+                errEl.textContent = 'First and last name are required.';
+                errEl.style.display = 'block'; return;
+            }
+
+            const frequency = [...document.querySelectorAll('input[name="ef_freq"]:checked')].map(c => c.value);
+            if (!frequency.length) {
+                errEl.textContent = 'Please select at least one alert time.';
+                errEl.style.display = 'block'; return;
+            }
+
+            const payload = {
+                first_name: firstName,
+                last_name: lastName,
+                profession: document.getElementById('ef_profession').value.trim(),
+                professions: [document.getElementById('ef_profession').value.trim()],
+                variants: [..._tags.ef_variants],
+                seniority: [..._tags.ef_seniority],
+                company_type: [..._tags.ef_company],
+                city: [..._tags.ef_locations],
+                work_type: document.getElementById('ef_work_type').value,
+                frequency,
+            };
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span>Saving…';
+
+            try {
+                const res = await fetch(`${API_URL}/user/${encodeURIComponent(_editEmail)}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.error || 'Server error ' + res.status);
+                }
+                statusEl.style.color = 'var(--accent)';
+                statusEl.textContent = '✓ Changes saved! Your next alert will use the updated settings.';
+                btn.disabled = false; btn.textContent = 'Save changes →';
+                setTimeout(() => closeEditModal(), 2200);
+
+            } catch (err) {
+                errEl.textContent = 'Save failed: ' + err.message;
+                errEl.style.display = 'block';
+                btn.disabled = false; btn.textContent = 'Save changes →';
+            }
+        }
     </script>
+
+    <!-- ══ Edit Modal Overlay ══════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="editModalOverlay">
+
+        <!-- Step 1: Email lookup -->
+        <div class="modal-box" id="editStep1">
+            <button class="modal-close" onclick="closeEditModal()">×</button>
+            <div class="modal-eyebrow">✏️ Edit Preferences</div>
+            <h2>Find your profile</h2>
+            <p class="modal-sub">Enter the email address you registered with. We'll load your current settings so you
+                can update them.</p>
+
+            <div class="modal-field">
+                <label>Registered email <span style="color:var(--accent)">*</span></label>
+                <input type="email" id="editLookupEmail" placeholder="your@email.com" autocomplete="email"
+                    onkeydown="if(event.key==='Enter')lookupUser()" />
+            </div>
+            <div class="modal-error" id="editLookupError"></div>
+
+            <div class="modal-btns">
+                <button class="btn-ghost" onclick="closeEditModal()">Cancel</button>
+                <button class="btn" id="editLookupBtn" onclick="lookupUser()" style="flex:2">Load my profile →</button>
+            </div>
+        </div>
+
+        <!-- Step 2: Edit form -->
+        <div class="modal-box wide" id="editStep2" style="display:none">
+            <button class="modal-close" onclick="closeEditModal()">×</button>
+            <div class="modal-eyebrow">✏️ Edit Preferences</div>
+            <h2>Update your settings</h2>
+            <div class="modal-user-badge" id="editUserBadge">📧 user@email.com</div>
+
+            <div class="modal-section-title">Personal Details</div>
+            <div class="modal-two-col">
+                <div class="modal-field">
+                    <label>First name</label>
+                    <input type="text" id="ef_first_name" />
+                </div>
+                <div class="modal-field">
+                    <label>Last name</label>
+                    <input type="text" id="ef_last_name" />
+                </div>
+            </div>
+
+            <div class="modal-section-title">Job Preferences</div>
+            <div class="modal-field">
+                <label>Main job title</label>
+                <input type="text" id="ef_profession" placeholder="e.g. Customer Success Manager" />
+            </div>
+            <div class="modal-field">
+                <label>Title variants <span style="font-weight:300;text-transform:none;letter-spacing:0">(press Enter to
+                        add)</span></label>
+                <div class="tag-field" id="ef_variants_field">
+                    <input type="text" class="tag-add-input" id="ef_variants_input" placeholder="Add a variant…"
+                        onkeydown="tagInputKey(event,'ef_variants_input','ef_variants')" />
+                </div>
+            </div>
+
+            <div class="modal-field">
+                <label>Seniority levels <span style="font-weight:300;text-transform:none;letter-spacing:0">(press Enter
+                        to add)</span></label>
+                <div class="tag-field" id="ef_seniority_field">
+                    <input type="text" class="tag-add-input" id="ef_seniority_input" placeholder="e.g. Senior, Junior…"
+                        onkeydown="tagInputKey(event,'ef_seniority_input','ef_seniority')" />
+                </div>
+            </div>
+
+            <div class="modal-field">
+                <label>Company types <span style="font-weight:300;text-transform:none;letter-spacing:0">(press Enter to
+                        add)</span></label>
+                <div class="tag-field" id="ef_company_field">
+                    <input type="text" class="tag-add-input" id="ef_company_input" placeholder="e.g. B2B, B2C…"
+                        onkeydown="tagInputKey(event,'ef_company_input','ef_company')" />
+                </div>
+            </div>
+
+            <div class="modal-section-title">Location</div>
+            <div class="modal-field">
+                <label>Cities <span style="font-weight:300;text-transform:none;letter-spacing:0">(press Enter to
+                        add)</span></label>
+                <div class="tag-field" id="ef_locations_field">
+                    <input type="text" class="tag-add-input" id="ef_locations_input" placeholder="e.g. Tel Aviv…"
+                        onkeydown="tagInputKey(event,'ef_locations_input','ef_locations')" />
+                </div>
+            </div>
+            <div class="modal-field">
+                <label>Work type</label>
+                <select id="ef_work_type">
+                    <option value="On-site">On-site</option>
+                    <option value="Hybrid">Hybrid</option>
+                    <option value="Remote">Remote</option>
+                    <option value="Remote or Hybrid">Remote or Hybrid</option>
+                    <option value="Any">Any (no preference)</option>
+                </select>
+            </div>
+
+            <div class="modal-section-title">Alert Schedule</div>
+            <div class="modal-field">
+                <label>Notification times</label>
+                <div class="chip-group" id="ef_frequency_chips">
+                    <label class="chip"><input type="checkbox" name="ef_freq" value="08:00" /> 8:00 AM</label>
+                    <label class="chip"><input type="checkbox" name="ef_freq" value="12:00" /> 12:00 PM</label>
+                    <label class="chip"><input type="checkbox" name="ef_freq" value="17:00" /> 5:00 PM</label>
+                    <label class="chip"><input type="checkbox" name="ef_freq" value="21:00" /> 9:00 PM</label>
+                </div>
+            </div>
+
+            <div class="modal-error" id="editSaveError"></div>
+
+            <div class="modal-btns">
+                <button class="btn-ghost" onclick="showEditStep1()">← Back</button>
+                <button class="btn-ghost" onclick="closeEditModal()">Cancel</button>
+                <button class="btn" id="editSaveBtn" onclick="saveUser()" style="flex:2">Save changes →</button>
+            </div>
+            <div class="save-status" id="editSaveStatus"></div>
+        </div>
+
+    </div>
+
 </body>
 
 </html>
