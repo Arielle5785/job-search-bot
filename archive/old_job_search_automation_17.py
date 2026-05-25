@@ -945,7 +945,7 @@ def main():
         else:
             freq_list = [f.strip() for f in str(frequency).split(",")]
 
-        def is_scheduled_now(freq_list, current_total_minutes, tolerance=90):
+        def is_scheduled_now(freq_list, current_total_minutes, tolerance=45):
             for t in freq_list:
                 try:
                     h, m = map(int, t.strip().split(":"))
