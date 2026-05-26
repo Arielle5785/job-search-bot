@@ -256,33 +256,15 @@ def passes_filters(job: dict, title_variants: list, user: dict) -> bool:
     normalised_title = re.sub(r"[^\w\s]", " ", title)
     normalised_title = re.sub(r"\s+", " ", normalised_title).strip()
 
-    # Gate 0 — skip jobs older than 1 week
-    # Keep only: "just posted", "today", "yesterday", "1 day", "2 days" ... "7 days"
-    # Exclude: "2 weeks", "1 month", "30+ days", etc.
+    # Gate 0 — skip jobs older than ~1 month
     posted_date = (job.get("posted_date") or "").lower()
-    old_signals = [
-        "2 week", "3 week", "4 week",
-        "1 month", "2 month", "3 month", "4 month", "5 month", "6 month",
-        "30+ days", "30 days ago", "60 days", "90 days",
-        "מזמן",  # Hebrew "a long time ago"
-    ]
+    old_signals = ["month", "months", "30+ days", "30 days ago", "מזמן"]
     if any(s in posted_date for s in old_signals):
         return False
-    # Also block "8 days" through "31 days" explicitly
-    import re as _re
-    day_match = _re.search(r'(\d+)\s*day', posted_date)
-    if day_match and int(day_match.group(1)) > 7:
-        return False
     
-    # Gate 1 — title OR description must match one of the user's variants
-    # Title match is preferred; description match is accepted as fallback
-    # so roles like "Revenue Manager" or "GTM Lead" aren't missed
-    title_match = any(v.lower() in normalised_title for v in title_variants)
-    if not title_match:
-        # Fallback: check description for at least one variant
-        desc_match = any(v.lower() in description for v in title_variants)
-        if not desc_match:
-            return False
+    # Gate 1 — title must match one of the user's variants
+    if not any(v.lower() in normalised_title for v in title_variants):
+        return False
 
     # Gate 2 — city/location (skip for Israel-native boards)
     cities     = [c.lower() for c in user.get("city", [])]
@@ -306,7 +288,7 @@ def passes_filters(job: dict, title_variants: list, user: dict) -> bool:
     company_types = [ct.lower() for ct in user.get("company_type", [])]
     if company_types and "b2c" not in company_types:
         # If user did NOT select B2C, exclude known B2C signals
-        b2c_signals = ["b2c", "e-commerce", "ecommerce", "gaming", "game"]  # removed "retail" — too many B2B SaaS companies serve retail clients
+        b2c_signals = ["b2c", "e-commerce", "ecommerce", "retail", "gaming", "game"]
         if any(s in full_text for s in b2c_signals):
             return False
     if company_types and "b2b" not in company_types:
@@ -401,41 +383,30 @@ def safe_get(url: str, source_name: str):
     return None
 
 
-def build_search_terms(profession: str, languages: list, variants: list = None) -> list:
+def build_search_terms(profession: str, languages: list) -> list:
     """
-    Build search terms to send to job boards.
-    Includes the profession + key variants so we cast a wider net.
-    Full filtering still happens via passes_filters() after scraping.
+    Build a short list of core search terms to send to job boards.
+    We keep this short (3-5 terms) to avoid hammering servers.
+    The full filtering happens via title_variants after scraping.
     """
     terms = []
-    seen = set()
+    base = profession.lower().strip()
 
-    def add(t):
-        t = t.strip().lower()
-        if t and t not in seen:
-            terms.append(t)
-            seen.add(t)
+    # Always include the raw profession as typed
+    terms.append(base)
 
-    # Always include the raw profession
-    add(profession)
-
-    # Add a 2-word shortened version if multi-word (e.g. "customer success")
-    words = profession.lower().strip().split()
+    # Add a simplified version if multi-word
+    words = base.split()
     if len(words) > 2:
-        add(" ".join(words[:2]))
-
-    # Add key variants as search terms (skip very long or generic ones)
-    for v in (variants or []):
-        v = v.strip()
-        if v and len(v) <= 40:
-            add(v)
+        terms.append(" ".join(words[:2]))
 
     # Hebrew if requested
     if "hebrew" in languages:
-        add("מנהל")   # manager (m)
-        add("מנהלת")  # manager (f)
+        # Generic Hebrew search terms — covers most professions
+        terms.append("מנהל")   # manager
+        terms.append("מנהלת")  # manager (f)
 
-    return terms[:8]  # cap at 8 — wide enough without hammering servers
+    return terms[:5]  # cap at 5 to be polite
 
 
 # ── StartupForStartup (Selenium) ──────────────────────────────────────────────
@@ -942,7 +913,7 @@ def main():
     # Build search terms from ALL users so every profession gets scraped
     search_terms = []
     for u in users:
-        terms = build_search_terms(u.get("profession", ""), ["english"], u.get("variants", []))
+        terms = build_search_terms(u.get("profession", ""), ["english"])
         for t in terms:
             if t not in search_terms:
                 search_terms.append(t)
