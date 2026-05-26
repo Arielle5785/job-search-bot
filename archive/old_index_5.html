@@ -950,32 +950,9 @@
         };
 
         // ── Registration mode (register tab stays as-is) ──────────────────
-        // ── Wire up DOM-dependent listeners after page loads ────────────
-        document.addEventListener('DOMContentLoaded', function () {
-
-            // Tab register click
-            const tabReg = document.getElementById('tabRegister');
-            if (tabReg) tabReg.addEventListener('click', function () {
-                this.classList.add('active');
-                document.getElementById('tabEdit').classList.remove('active');
-            });
-
-            // Registration form submit
-            const regForm = document.getElementById('regForm');
-            if (regForm) regForm.addEventListener('submit', handleRegSubmit);
-
-            // Edit modal backdrop click
-            const overlay = document.getElementById('editModalOverlay');
-            if (overlay) overlay.addEventListener('click', function (e) {
-                if (e.target === this) closeEditModal();
-            });
-
-            // Edit email input — Enter key
-            const editEmail = document.getElementById('editLookupEmail');
-            if (editEmail) editEmail.addEventListener('keydown', e => {
-                if (e.key === 'Enter') lookupUser();
-            });
-
+        document.getElementById('tabRegister').addEventListener('click', function () {
+            this.classList.add('active');
+            document.getElementById('tabEdit').classList.remove('active');
         });
 
         // ── Profession autocomplete ───────────────────────────────────────
@@ -1090,7 +1067,7 @@
         }
 
         // ── Registration form submit ───────────────────────────────────────
-        async function handleRegSubmit(e) {
+        document.getElementById('regForm').addEventListener('submit', async function (e) {
             e.preventDefault();
             const btn = document.getElementById('submitBtn');
             const errorMsg = document.getElementById('errorMsg');
@@ -1173,7 +1150,8 @@
                 btn.disabled = false;
                 btn.textContent = 'Send my registration →';
             }
-        }
+        });
+
         // ══ EDIT MODAL ════════════════════════════════════════════════════
 
         let _editEmail = '';
@@ -1202,7 +1180,9 @@
         }
 
         // Close on backdrop click
-        // editModalOverlay click handler is in DOMContentLoaded above
+        document.getElementById('editModalOverlay').addEventListener('click', function (e) {
+            if (e.target === this) closeEditModal();
+        });
 
         // ── Lookup user ───────────────────────────────────────────────────
         async function lookupUser() {
@@ -1220,7 +1200,7 @@
             btn.innerHTML = '<span class="spinner"></span>Looking up…';
 
             try {
-                const res = await fetch(`${API_URL}/user/${encodeURIComponent(email)}`, { signal: AbortSignal.timeout(15000) });
+                const res = await fetch(`${API_URL}/user/${encodeURIComponent(email)}`);
                 if (res.status === 404) {
                     errEl.textContent = 'No account found for that email. Check the address or register first.';
                     errEl.style.display = 'block';
@@ -1235,12 +1215,7 @@
                 document.getElementById('editStep2').style.display = '';
 
             } catch (err) {
-                console.error('Lookup error:', err);
-                if (err.name === 'TimeoutError' || err.name === 'AbortError') {
-                    errEl.textContent = 'Server is waking up (Render cold start) — please wait 30 seconds and try again.';
-                } else {
-                    errEl.textContent = 'Could not connect to server: ' + err.message;
-                }
+                errEl.textContent = 'Could not connect to server. Please try again.';
                 errEl.style.display = 'block';
             } finally {
                 btn.disabled = false; btn.textContent = 'Load my profile →';
@@ -1349,7 +1324,6 @@
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload),
-                    signal: AbortSignal.timeout(15000),
                 });
                 if (!res.ok) {
                     const err = await res.json().catch(() => ({}));
@@ -1361,12 +1335,7 @@
                 setTimeout(() => closeEditModal(), 2200);
 
             } catch (err) {
-                console.error('Save error:', err);
-                if (err.name === 'TimeoutError' || err.name === 'AbortError') {
-                    errEl.textContent = 'Request timed out — server may be waking up. Please try again.';
-                } else {
-                    errEl.textContent = 'Save failed: ' + err.message;
-                }
+                errEl.textContent = 'Save failed: ' + err.message;
                 errEl.style.display = 'block';
                 btn.disabled = false; btn.textContent = 'Save changes →';
             }
