@@ -160,9 +160,8 @@ def generate_title_variants(profession: str, user_variants: list) -> list:
     Use user-provided variants if available, else call Claude AI to generate them.
     Returns a list of title strings.
     """
-    # If user has 10+ curated variants, use them as-is
-    # Otherwise, let Claude generate a full list and merge with any user variants
-    if user_variants and len(user_variants) >= 10:
+    # If user typed their own variants, use those + the main profession
+    if user_variants:
         all_variants = [profession] + user_variants
         cleaned = [v.strip() for v in all_variants if v.strip()]
         print(f"\n  [Variants] Using {len(cleaned)} user-provided variants")
@@ -201,10 +200,8 @@ Example format:
         if isinstance(variants, list):
             # Normalise: lowercase for non-Hebrew/non-French
             cleaned = [v.strip() for v in variants if isinstance(v, str) and v.strip()]
-            # Merge with any user-provided variants so nothing is lost
-            merged = list(dict.fromkeys(cleaned + [v.strip() for v in user_variants if v.strip()]))
-            print(f"  [Claude] Generated {len(cleaned)} variants (merged with {len(user_variants)} user variants → {len(merged)} total)")
-            return merged
+            print(f"  [Claude] Generated {len(cleaned)} variants")
+            return cleaned
     except Exception as e:
         print(f"  [Claude] Error generating variants: {e}")
 
