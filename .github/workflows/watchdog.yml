@@ -1,0 +1,67 @@
+name: Job Bot Watchdog
+
+on:
+  schedule:
+    # Runs at 06:30 UTC = 09:30 Israel time
+    # Checks if the 05:00 UTC (08:00 Israel) run happened in the last 2 hours
+    - cron: "30 6 * * 0-5"
+    # Runs at 10:30 UTC = 13:30 Israel time
+    # Checks if the 09:00 UTC (12:00 Israel) run happened
+    - cron: "30 10 * * 0-5"
+    # Runs at 15:30 UTC = 18:30 Israel time
+    # Checks if the 14:00 UTC (17:00 Israel) run happened
+    - cron: "30 15 * * 0-5"
+    # Runs at 19:30 UTC = 22:30 Israel time
+    # Checks if the 18:00 UTC (21:00 Israel) run happened
+    - cron: "30 19 * * 0-5"
+  workflow_dispatch:
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if Job Search Bot ran in the last 2 hours
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.WATCHDOG_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          # Get runs from the last 2 hours
+          SINCE=$(date -u -d '2 hours ago' '+%Y-%m-%dT%H:%M:%SZ')
+
+          RUNS=$(curl -s \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$REPO/actions/workflows/job_bot.yml/runs?created=>$SINCE&per_page=5")
+
+          COUNT=$(echo "$RUNS" | python3 -c "
+          import sys, json
+          data = json.load(sys.stdin)
+          runs = data.get('workflow_runs', [])
+          # Only count completed or in-progress runs (not queued)
+          recent = [r for r in runs if r.get('status') in ('completed', 'in_progress')]
+          print(len(recent))
+          ")
+
+          echo "Recent runs in last 2h: $COUNT"
+
+          if [ "$COUNT" -eq "0" ]; then
+            echo "MISSED=true" >> $GITHUB_OUTPUT
+            echo "⚠️ No recent run found — triggering Job Search Bot now"
+          else
+            echo "MISSED=false" >> $GITHUB_OUTPUT
+            echo "✅ Job Search Bot ran recently — no action needed"
+          fi
+
+      - name: Trigger Job Search Bot if missed
+        if: steps.check.outputs.MISSED == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.WATCHDOG_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          curl -s -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$REPO/actions/workflows/job_bot.yml/dispatches" \
+            -d '{"ref":"master"}'
+          echo "✅ Triggered Job Search Bot via workflow_dispatch"

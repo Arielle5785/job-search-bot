@@ -1,0 +1,61 @@
+# Watchdog Setup — One-Time Steps
+
+## What this does
+The watchdog runs 90 minutes after each scheduled Job Search Bot window.
+If the bot didn't run (GitHub dropped it), the watchdog re-triggers it automatically.
+
+Schedule:
+  - 06:30 UTC → checks if 05:00 UTC (08:00 Israel) ran
+  - 10:30 UTC → checks if 09:00 UTC (12:00 Israel) ran
+  - 15:30 UTC → checks if 14:00 UTC (17:00 Israel) ran
+  - 19:30 UTC → checks if 18:00 UTC (21:00 Israel) ran
+
+---
+
+## Step 1 — Create a GitHub Personal Access Token
+
+1. Go to: https://github.com/settings/tokens/new
+2. Note: "Job Bot Watchdog"
+3. Expiration: 1 year (or No expiration)
+4. Scopes — check ONLY:
+   ✅ repo → workflow   (to trigger workflows)
+   ✅ repo → actions:read  (to list runs)
+   
+   (Easiest: just check the top-level "repo" box)
+5. Click "Generate token"
+6. COPY the token now — you won't see it again
+
+---
+
+## Step 2 — Add it as a GitHub Secret
+
+1. Go to your repo → Settings → Secrets and variables → Actions
+2. Click "New repository secret"
+3. Name:  WATCHDOG_TOKEN
+4. Value: paste the token from Step 1
+5. Click "Add secret"
+
+---
+
+## Step 3 — Add the workflow file
+
+Copy watchdog.yml to:
+  .github/workflows/watchdog.yml
+
+Then push:
+  git add .github/workflows/watchdog.yml
+  git commit -m "feat: add watchdog to re-trigger missed bot runs"
+  git push
+
+---
+
+## Step 4 — Verify it works
+
+After pushing, go to:
+  Actions → Job Bot Watchdog → Run workflow (manually)
+
+Check the log — it should say either:
+  ✅ Job Search Bot ran recently — no action needed
+  ⚠️ No recent run found — triggering Job Search Bot now
+
+That's it. The watchdog will now silently rescue any missed runs forever.
