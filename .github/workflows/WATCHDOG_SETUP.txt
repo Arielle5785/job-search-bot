@@ -58,4 +58,3 @@ Check the log — it should say either:
   ✅ Job Search Bot ran recently — no action needed
   ⚠️ No recent run found — triggering Job Search Bot now
 
-That's it. The watchdog will now silently rescue any missed runs forever.
