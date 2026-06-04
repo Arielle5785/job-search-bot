@@ -11,10 +11,8 @@ Routes:
 """
 
 import os
-import smtplib
 import psycopg2
 import psycopg2.extras
-from email.mime.text import MIMEText
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -95,39 +93,6 @@ def get_user(email):
         return jsonify(dict(row))
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-
-# ── Admin alert ───────────────────────────────────────────────
-
-def notify_new_registration(first_name: str, last_name: str, email: str, profession: str):
-    """Send a quick email to the admin when a new user registers."""
-    sender   = os.environ.get("EMAIL_FROM")
-    password = os.environ.get("EMAIL_PASSWORD")
-    admin    = os.environ.get("ADMIN_EMAIL", sender)  # defaults to sender if not set
-
-    if not all([sender, password, admin]):
-        print(f"  [alert] Email not configured — skipping admin notification")
-        return
-
-    try:
-        body = (
-            f"New registration on the Job Search Bot!\n\n"
-            f"Name:       {first_name} {last_name}\n"
-            f"Email:      {email}\n"
-            f"Profession: {profession}\n"
-        )
-        msg = MIMEText(body)
-        msg["Subject"] = f"🆕 New user: {first_name} {last_name}"
-        msg["From"]    = sender
-        msg["To"]      = admin
-
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login(sender, password)
-            server.sendmail(sender, admin, msg.as_string())
-
-        print(f"  [alert] Admin notified about new user: {email}")
-    except Exception as e:
-        print(f"  [alert] Failed to send admin notification: {e}")
 
 
 # ── POST /register ────────────────────────────────────────────
@@ -239,15 +204,6 @@ def register():
         conn.commit()
         cur.close()
         conn.close()
-
-        # Notify admin about the new registration
-        notify_new_registration(
-            data["first_name"].strip().title(),
-            data["last_name"].strip().title(),
-            email,
-            professions[0] if professions else data.get("profession", "")
-        )
-
         return jsonify({"message": "User registered successfully", "user_id": user_id}), 201
 
     except Exception as e:
