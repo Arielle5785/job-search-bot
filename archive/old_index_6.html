@@ -864,8 +864,8 @@
                 <div class="section-title">Job Boards to Search</div>
 
                 <div class="field">
-                    <p class="hint" style="margin-bottom:12px;">Enter up to 6 websites. Leave blank to use the defaults:
-                        LinkedIn, Indeed IL, StartupForStartup, Nefesh B'Nefesh, JobShop, Cruitie.</p>
+                    <p class="hint" style="margin-bottom:12px;">Enter up to 5 websites. Leave blank to use the defaults:
+                        LinkedIn, Indeed IL, StartupForStartup, Nefesh B'Nefesh, JobShop.</p>
                     <div class="websites-grid">
                         <div class="site-wrap">
                             <span class="site-num">1</span>
@@ -886,10 +886,6 @@
                         <div class="site-wrap">
                             <span class="site-num">5</span>
                             <input type="text" id="site5" placeholder="jobshop.co.il" />
-                        </div>
-                        <div class="site-wrap">
-                            <span class="site-num">6</span>
-                            <input type="text" id="site6" placeholder="cruitie.com" value="cruitie.com" />
                         </div>
                     </div>
                 </div>
@@ -1102,7 +1098,7 @@
 
             const variants = [...document.querySelectorAll('#variantsList input[name="variant"]')]
                 .map(i => i.value.trim()).filter(Boolean);
-            const websites = ['site1', 'site2', 'site3', 'site4', 'site5', 'site6']
+            const websites = ['site1', 'site2', 'site3', 'site4', 'site5']
                 .map(id => document.getElementById(id).value.trim()).filter(Boolean);
             const frequency = [...document.querySelectorAll('input[name="frequency"]:checked')].map(c => c.value);
             const seniority = [...document.querySelectorAll('input[name="seniority"]:checked')].map(c => c.value);
@@ -1114,7 +1110,7 @@
             const email = document.getElementById('email').value.trim();
             const profession = document.getElementById('profession').value.trim();
             const city = [...document.getElementById('city').selectedOptions].map(o => o.value);
-            const defaultWebsites = ['linkedin.com', 'il.indeed.com', 'startupforstartup.com', 'nbn.org.il', 'jobshop.co.il', , 'cruitie.com'];
+            const defaultWebsites = ['linkedin.com', 'il.indeed.com', 'startupforstartup.com', 'nbn.org.il', 'jobshop.co.il'];
 
             if (!nameVal || !email || !profession) {
                 errorMsg.textContent = 'Please fill in name, email and job title.';

@@ -238,7 +238,7 @@ EXCLUDE_KEYWORDS = [
 
 # Israel-only boards — skip the location gate for these
 ISRAEL_NATIVE_SOURCES = {
-    "startupforstartup", "lastartup", "jobshop", "nefesh b'nefesh", "indeed il", "cruitie"
+    "startupforstartup", "lastartup", "jobshop", "nefesh b'nefesh", "indeed il"
 }
 
 
@@ -772,118 +772,6 @@ def fetch_indeed(search_terms: list) -> list:
     print(f"  {SOURCE}: {len(unique)} listings")
     return unique
 
-# ── Cruitie (Selenium) ────────────────────────────────────────────────────────
-
-def fetch_cruitie(search_terms: list) -> list:
-    """
-    Scrape https://www.cruitie.com/jobs
-    The page is Next.js SSR — it renders server-side so BeautifulSoup reads
-    the live HTML once Selenium has loaded it (plain requests returns 403).
-    Search URL: https://www.cruitie.com/jobs?search=TERM
-    Card structure: h3 (title) + p (company · region · date) + a[href] (link)
-    """
-    SOURCE   = "Cruitie"
-    BASE_URL = "https://www.cruitie.com"
-    jobs     = []
-    driver   = None
-
-    try:
-        driver = get_selenium_driver()
-
-        for term in search_terms:
-            encoded = requests.utils.quote(term)
-            url = f"{BASE_URL}/jobs?search={encoded}"
-            try:
-                driver.get(url)
-                # Wait for the jobs list anchor to exist and at least one h3
-                WebDriverWait(driver, 12).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, "#jobs-list h3, #jobs-list"))
-                )
-                time.sleep(2)
-            except Exception:
-                # Fallback: load without search term
-                try:
-                    driver.get(f"{BASE_URL}/jobs")
-                    time.sleep(3)
-                except Exception:
-                    print(f"  [{SOURCE}] Could not load page for '{term}'")
-                    continue
-
-            soup = BeautifulSoup(driver.page_source, "html.parser")
-
-            # Find the #jobs-list section
-            jobs_section = soup.find(id="jobs-list")
-            if not jobs_section:
-                # Fallback: scan entire page for job cards
-                jobs_section = soup
-
-            # Job cards: each h3 is a job title; its parent container holds
-            # company/region/date text and a link.
-            # Pattern confirmed from live page: h3 > sibling p > sibling a
-            title_els = jobs_section.find_all("h3")
-
-            for title_el in title_els[:40]:
-                try:
-                    title = title_el.get_text(strip=True)
-                    if not title:
-                        continue
-
-                    # Walk up to the card container (usually 1–2 levels)
-                    card = title_el.parent
-                    if not card:
-                        continue
-
-                    # Get the first <a> with an href pointing to a job
-                    link_el = card.find("a", href=lambda h: h and "/jobs/" in h)
-                    if not link_el:
-                        # Try parent's parent
-                        card = card.parent
-                        link_el = card.find("a", href=lambda h: h and "/jobs/" in h) if card else None
-
-                    href = ""
-                    if link_el and link_el.get("href"):
-                        href = link_el["href"]
-                        if not href.startswith("http"):
-                            href = f"{BASE_URL}{href}"
-
-                    # Company & date: the text block below the h3
-                    # Format seen: "CompanyName · Region · Today" or "Company · Region · Yesterday"
-                    meta_el = title_el.find_next_sibling() or title_el.parent.find("p")
-                    meta_text = meta_el.get_text(" ", strip=True) if meta_el else ""
-
-                    # Parse company (first token before ·)
-                    parts = [p.strip() for p in meta_text.split("·")]
-                    company     = parts[0] if parts else ""
-                    posted_date = parts[-1] if len(parts) >= 2 else ""
-
-                    if title and href:
-                        jobs.append({
-                            "title":       title,
-                            "company":     company,
-                            "location":    "Israel",
-                            "url":         href,
-                            "description": "",
-                            "source":      SOURCE,
-                            "posted_date": posted_date,
-                        })
-                except Exception:
-                    continue
-
-            time.sleep(REQUEST_DELAY)
-
-    except Exception as e:
-        print(f"  [{SOURCE}] Selenium error: {e}")
-    finally:
-        if driver:
-            driver.quit()
-
-    seen, unique = set(), []
-    for j in jobs:
-        k = make_job_id(j)
-        if k not in seen:
-            seen.add(k); unique.append(j)
-    print(f"  {SOURCE}: {len(unique)} listings")
-    return unique
 
 # ── Aggregate ─────────────────────────────────────────────────────────────────
 
@@ -895,8 +783,8 @@ def fetch_all_sources(search_terms: list) -> list:
     all_jobs += fetch_jobshop(search_terms)
     all_jobs += fetch_linkedin(search_terms)
     all_jobs += fetch_indeed(search_terms)
-    all_jobs += fetch_cruitie(search_terms)
     return all_jobs
+
 
 # =============================================================================
 # 6. EMAIL DIGEST
@@ -908,7 +796,6 @@ SOURCE_COLORS = {
     "JobShop":           "#fef9c3",
     "LinkedIn":          "#dbeafe",
     "Indeed IL":         "#dcfce7",
-    "Cruitie":           "#ede9fe",
 }
 
 
