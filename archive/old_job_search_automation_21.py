@@ -189,7 +189,7 @@ Example format:
         client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
         message = client.messages.create(
             model="claude-sonnet-4-5",
-            max_tokens=2000,
+            max_tokens=1000,
             messages=[{"role": "user", "content": prompt}]
         )
         raw = message.content[0].text.strip()
@@ -210,17 +210,14 @@ Example format:
 
     # Fallback — basic variants from profession string
     base = profession.lower().strip()
-    # Strip trailing "manager" cleanly so "head of ai engineer" not "head of ai engineer"
-    # and avoids "head of  " (double space) for professions that don't contain "manager"
-    core = re.sub(r'\bmanager\b', '', base).strip() or base
-    return [v for v in [
+    return [
         base,
         f"senior {base}",
         f"lead {base}",
-        f"head of {core}",
-        f"director of {core}",
-        f"vp {core}",
-    ] if v.strip()]
+        f"head of {base.replace('manager', '').strip()}",
+        f"director of {base.replace('manager', '').strip()}",
+        f"vp {base.replace('manager', '').strip()}",
+    ]
 
 
 # =============================================================================
@@ -241,15 +238,14 @@ EXCLUDE_KEYWORDS = [
 
 # Israel-only boards — skip the location gate for these
 ISRAEL_NATIVE_SOURCES = {
-    "startupforstartup", "lastartup", "jobshop", "nefesh b'nefesh", "indeed il"
+    "startupforstartup", "lastartup", "jobshop", "nefesh b'nefesh", "indeed il", "cruitie"
 }
 
 
-def passes_filters(job: dict, title_variants: list, user: dict, debug: bool = False) -> bool:
+def passes_filters(job: dict, title_variants: list, user: dict) -> bool:
     """
     Returns True if the job passes all gates for a specific user.
     Uses per-user title_variants, city, work_type, seniority, company_type.
-    Set debug=True (env DEBUG_FILTER=true) to print which gate kills each job.
     """
     title       = (job.get("title", "") or "").lower()
     location    = (job.get("location", "") or "").lower()
@@ -274,13 +270,11 @@ def passes_filters(job: dict, title_variants: list, user: dict, debug: bool = Fa
         "מזמן",  # Hebrew "a long time ago"
     ]
     if any(s in posted_date for s in old_signals):
-        if debug: print(f"    [Gate0-date] BLOCKED '{posted_date}' | {job.get('title')}")
         return False
     # Also block "8 days" through "31 days" explicitly
     import re as _re
     day_match = _re.search(r'(\d+)\s*day', posted_date)
     if day_match and int(day_match.group(1)) > 7:
-        if debug: print(f"    [Gate0-days] BLOCKED '{posted_date}' | {job.get('title')}")
         return False
     
     # Gate 1 — title OR description must match one of the user's variants
@@ -291,16 +285,14 @@ def passes_filters(job: dict, title_variants: list, user: dict, debug: bool = Fa
         # Fallback: check description for at least one variant
         desc_match = any(v.lower() in description for v in title_variants)
         if not desc_match:
-            if debug: print(f"    [Gate1-title] BLOCKED | title='{job.get('title')}' src={job.get('source')}")
             return False
 
     # Gate 2 — city/location (skip for Israel-native boards)
-    cities     = [c.lower() for c in (user.get("city") or [])]
+    cities     = [c.lower() for c in user.get("city", [])]
     work_type  = (user.get("work_type") or "any").lower()
     if cities and "no preference" not in cities:
         if not any(s in source for s in ISRAEL_NATIVE_SOURCES):
             if not any(c in full_text for c in cities):
-                if debug: print(f"    [Gate2-city] BLOCKED cities={cities} | {job.get('title')}")
                 return False
 
     # Gate 3 — work type filter
@@ -311,33 +303,29 @@ def passes_filters(job: dict, title_variants: list, user: dict, debug: bool = Fa
         if work_type == "remote" and not any(t in full_text for t in remote_terms):
             pass  # soft signal only — don't hard-exclude
         if work_type == "on-site" and any(t in full_text for t in remote_terms):
-            if debug: print(f"    [Gate3-worktype] BLOCKED on-site vs remote | {job.get('title')}")
             return False  # user wants on-site, skip remote roles
 
     # Gate 4 — company type filter
-    company_types = [ct.lower() for ct in (user.get("company_type") or [])]
+    company_types = [ct.lower() for ct in user.get("company_type", [])]
     if company_types and "b2c" not in company_types:
         # If user did NOT select B2C, exclude known B2C signals
-        b2c_signals = ["b2c", "e-commerce", "ecommerce", "gaming", "game"]
+        b2c_signals = ["b2c", "e-commerce", "ecommerce", "gaming", "game"]  # removed "retail" — too many B2B SaaS companies serve retail clients
         if any(s in full_text for s in b2c_signals):
-            if debug: print(f"    [Gate4-b2c] BLOCKED | {job.get('title')}")
             return False
     if company_types and "b2b" not in company_types:
         # If user did NOT select B2B, skip pure B2B signals
         pass  # B2B is hard to detect reliably — leave as soft
 
     # Gate 5 — seniority filter (soft — badge only, no hard exclusion)
-    seniority_levels = [s.lower() for s in (user.get("seniority") or [])]
+    seniority_levels = [s.lower() for s in user.get("seniority", [])]
     if "junior" not in seniority_levels:
         junior_signals = ["junior", "entry level", "entry-level", "graduate", "intern"]
         if any(s in full_text for s in junior_signals):
-            if debug: print(f"    [Gate5-junior] BLOCKED | {job.get('title')}")
             return False
 
     # Gate 6 — hard exclusions regardless of user prefs
     HARD_EXCLUDE = ["internship", "intern", "student", "apprentice", "bpo", "call center"]
     if any(kw in full_text for kw in HARD_EXCLUDE):
-        if debug: print(f"    [Gate6-hard] BLOCKED | {job.get('title')}")
         return False
 
     # Soft badge — SaaS/Fintech signal
@@ -784,43 +772,131 @@ def fetch_indeed(search_terms: list) -> list:
     print(f"  {SOURCE}: {len(unique)} listings")
     return unique
 
+# ── Cruitie (Selenium) ────────────────────────────────────────────────────────
+
+def fetch_cruitie(search_terms: list) -> list:
+    """
+    Scrape https://www.cruitie.com/jobs
+    The page is Next.js SSR — it renders server-side so BeautifulSoup reads
+    the live HTML once Selenium has loaded it (plain requests returns 403).
+    Search URL: https://www.cruitie.com/jobs?search=TERM
+    Card structure: h3 (title) + p (company · region · date) + a[href] (link)
+    """
+    SOURCE   = "Cruitie"
+    BASE_URL = "https://www.cruitie.com"
+    jobs     = []
+    driver   = None
+
+    try:
+        driver = get_selenium_driver()
+
+        for term in search_terms:
+            encoded = requests.utils.quote(term)
+            url = f"{BASE_URL}/jobs?search={encoded}"
+            try:
+                driver.get(url)
+                # Wait for the jobs list anchor to exist and at least one h3
+                WebDriverWait(driver, 12).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "#jobs-list h3, #jobs-list"))
+                )
+                time.sleep(2)
+            except Exception:
+                # Fallback: load without search term
+                try:
+                    driver.get(f"{BASE_URL}/jobs")
+                    time.sleep(3)
+                except Exception:
+                    print(f"  [{SOURCE}] Could not load page for '{term}'")
+                    continue
+
+            soup = BeautifulSoup(driver.page_source, "html.parser")
+
+            # Find the #jobs-list section
+            jobs_section = soup.find(id="jobs-list")
+            if not jobs_section:
+                # Fallback: scan entire page for job cards
+                jobs_section = soup
+
+            # Job cards: each h3 is a job title; its parent container holds
+            # company/region/date text and a link.
+            # Pattern confirmed from live page: h3 > sibling p > sibling a
+            title_els = jobs_section.find_all("h3")
+
+            for title_el in title_els[:40]:
+                try:
+                    title = title_el.get_text(strip=True)
+                    if not title:
+                        continue
+
+                    # Walk up to the card container (usually 1–2 levels)
+                    card = title_el.parent
+                    if not card:
+                        continue
+
+                    # Get the first <a> with an href pointing to a job
+                    link_el = card.find("a", href=lambda h: h and "/jobs/" in h)
+                    if not link_el:
+                        # Try parent's parent
+                        card = card.parent
+                        link_el = card.find("a", href=lambda h: h and "/jobs/" in h) if card else None
+
+                    href = ""
+                    if link_el and link_el.get("href"):
+                        href = link_el["href"]
+                        if not href.startswith("http"):
+                            href = f"{BASE_URL}{href}"
+
+                    # Company & date: the text block below the h3
+                    # Format seen: "CompanyName · Region · Today" or "Company · Region · Yesterday"
+                    meta_el = title_el.find_next_sibling() or title_el.parent.find("p")
+                    meta_text = meta_el.get_text(" ", strip=True) if meta_el else ""
+
+                    # Parse company (first token before ·)
+                    parts = [p.strip() for p in meta_text.split("·")]
+                    company     = parts[0] if parts else ""
+                    posted_date = parts[-1] if len(parts) >= 2 else ""
+
+                    if title and href:
+                        jobs.append({
+                            "title":       title,
+                            "company":     company,
+                            "location":    "Israel",
+                            "url":         href,
+                            "description": "",
+                            "source":      SOURCE,
+                            "posted_date": posted_date,
+                        })
+                except Exception:
+                    continue
+
+            time.sleep(REQUEST_DELAY)
+
+    except Exception as e:
+        print(f"  [{SOURCE}] Selenium error: {e}")
+    finally:
+        if driver:
+            driver.quit()
+
+    seen, unique = set(), []
+    for j in jobs:
+        k = make_job_id(j)
+        if k not in seen:
+            seen.add(k); unique.append(j)
+    print(f"  {SOURCE}: {len(unique)} listings")
+    return unique
 
 # ── Aggregate ─────────────────────────────────────────────────────────────────
 
-def fetch_all_sources(search_terms: list, users: list = None) -> list:
-    """
-    Scrape all sources. LinkedIn is scraped per-user (3 terms each) so every
-    user's profession gets queried — not just the first user's terms in the
-    merged list. All other sources use the full merged search_terms.
-    """
+def fetch_all_sources(search_terms: list) -> list:
     print("\nScraping sources:")
     all_jobs = []
     all_jobs += fetch_startup_for_startup(search_terms)
     all_jobs += fetch_nefesh_bnefesh(search_terms)
     all_jobs += fetch_jobshop(search_terms)
+    all_jobs += fetch_linkedin(search_terms)
     all_jobs += fetch_indeed(search_terms)
-
-    # LinkedIn: query per-user so every profession gets coverage
-    if users:
-        linkedin_seen = set()
-        linkedin_total = 0
-        for u in users:
-            user_terms = build_search_terms(
-                u.get("profession", ""), ["english"], u.get("variants", [])
-            )
-            user_linkedin = fetch_linkedin(user_terms[:3])
-            for j in user_linkedin:
-                k = make_job_id(j)
-                if k not in linkedin_seen:
-                    linkedin_seen.add(k)
-                    all_jobs.append(j)
-                    linkedin_total += 1
-        print(f"  LinkedIn total across all users: {linkedin_total} listings")
-    else:
-        all_jobs += fetch_linkedin(search_terms)
-
+    all_jobs += fetch_cruitie(search_terms)
     return all_jobs
-
 
 # =============================================================================
 # 6. EMAIL DIGEST
@@ -832,6 +908,7 @@ SOURCE_COLORS = {
     "JobShop":           "#fef9c3",
     "LinkedIn":          "#dbeafe",
     "Indeed IL":         "#dcfce7",
+    "Cruitie":           "#ede9fe",
 }
 
 
@@ -987,7 +1064,7 @@ def main():
                 search_terms.append(t)
 
     print(f"\nSearch terms: {search_terms}")
-    raw_jobs = fetch_all_sources(search_terms, users=users)
+    raw_jobs = fetch_all_sources(search_terms)
     print(f"\nRaw total: {len(raw_jobs)} listings scraped")
 
     # Current Israel time (IDT = UTC+3)
@@ -996,21 +1073,6 @@ def main():
     israel_time = now_israel.strftime("%H:%M")
     israel_total_minutes = now_israel.hour * 60 + now_israel.minute
     print(f"\nIsrael time: {israel_time}")
-
-    # Defined once outside the loop (was incorrectly redefined every iteration)
-    def is_scheduled_now(freq_list, current_total_minutes, tolerance=90):
-        for t in freq_list:
-            try:
-                h, m = map(int, t.strip().split(":"))
-                sched_total = h * 60 + m
-                if abs(current_total_minutes - sched_total) <= tolerance:
-                    return True
-            except ValueError:
-                continue
-        return False
-
-    # Set DEBUG_FILTER=true in env to see which gate kills each job
-    debug_filter = os.getenv("DEBUG_FILTER", "false").lower() == "true"
 
     # Process each user
     for user in users:
@@ -1028,6 +1090,17 @@ def main():
         else:
             freq_list = [f.strip() for f in str(frequency).split(",")]
 
+        def is_scheduled_now(freq_list, current_total_minutes, tolerance=90):
+            for t in freq_list:
+                try:
+                    h, m = map(int, t.strip().split(":"))
+                    sched_total = h * 60 + m
+                    if abs(current_total_minutes - sched_total) <= tolerance:
+                        return True
+                except ValueError:
+                    continue
+            return False
+
         if not is_manual and not is_scheduled_now(freq_list, israel_total_minutes):
             print(f"  [skip] {name} — not scheduled at {israel_time} (scheduled: {freq_list})")
             continue
@@ -1036,49 +1109,7 @@ def main():
         title_variants = generate_title_variants(profession, variants)
 
         # Filter jobs for this user
-        filtered = [j for j in raw_jobs if passes_filters(j, title_variants, user, debug=debug_filter)]
-
-        # Gate breakdown summary — shows why jobs are being dropped for this user
-        gate_counts = {"g0_date": 0, "g1_title": 0, "g2_city": 0, "g3_work": 0,
-                       "g4_b2c": 0, "g5_junior": 0, "g6_hard": 0, "pass": 0}
-        for j in raw_jobs:
-            t_  = (j.get("title") or "").lower()
-            src = (j.get("source") or "").lower()
-            d_  = (j.get("description") or "").lower()
-            l_  = (j.get("location") or "").lower()
-            co_ = (j.get("company") or "").lower()
-            ft  = f"{t_} {l_} {d_} {co_}"
-            nt  = re.sub(r"\s+", " ", re.sub(r"[^\w\s]", " ", t_)).strip()
-            pd  = (j.get("posted_date") or "").lower()
-            old_sigs = ["2 week","3 week","4 week","1 month","2 month","3 month",
-                        "4 month","5 month","6 month","30+ days","30 days ago","60 days","90 days","מזמן"]
-            dm = re.search(r'(\d+)\s*day', pd)
-            if any(s in pd for s in old_sigs) or (dm and int(dm.group(1)) > 7):
-                gate_counts["g0_date"] += 1; continue
-            if not any(v.lower() in nt for v in title_variants) and \
-               not any(v.lower() in d_ for v in title_variants):
-                gate_counts["g1_title"] += 1; continue
-            cities_ = [c.lower() for c in (user.get("city") or [])]
-            if cities_ and "no preference" not in cities_:
-                if not any(s in src for s in ISRAEL_NATIVE_SOURCES):
-                    if not any(c in ft for c in cities_):
-                        gate_counts["g2_city"] += 1; continue
-            wt = (user.get("work_type") or "any").lower()
-            if wt == "on-site" and any(x in ft for x in ["remote", "מרחוק"]):
-                gate_counts["g3_work"] += 1; continue
-            ct = [x.lower() for x in (user.get("company_type") or [])]
-            if ct and "b2c" not in ct and any(s in ft for s in ["b2c","e-commerce","ecommerce","gaming","game"]):
-                gate_counts["g4_b2c"] += 1; continue
-            sl = [x.lower() for x in (user.get("seniority") or [])]
-            if "junior" not in sl and any(s in ft for s in ["junior","entry level","entry-level","graduate","intern"]):
-                gate_counts["g5_junior"] += 1; continue
-            if any(kw in ft for kw in ["internship","intern","student","apprentice","bpo","call center"]):
-                gate_counts["g6_hard"] += 1; continue
-            gate_counts["pass"] += 1
-        print(f"  Gates — date:{gate_counts['g0_date']} title:{gate_counts['g1_title']} "
-              f"city:{gate_counts['g2_city']} work:{gate_counts['g3_work']} "
-              f"b2c:{gate_counts['g4_b2c']} junior:{gate_counts['g5_junior']} hard:{gate_counts['g6_hard']} "
-              f"→ PASS:{gate_counts['pass']}")
+        filtered = [j for j in raw_jobs if passes_filters(j, title_variants, user)]
         print(f"Matching jobs after filter: {len(filtered)}")
 
         # Deduplicate against this user's cache
