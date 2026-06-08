@@ -103,11 +103,10 @@ def notify_new_registration(first_name: str, last_name: str, email: str, profess
     """Send a quick email to the admin when a new user registers."""
     sender   = os.environ.get("EMAIL_FROM")
     password = os.environ.get("EMAIL_PASSWORD")
-    admin    = os.environ.get("ADMIN_EMAIL") or sender  # falls back to sender
+    admin    = os.environ.get("ADMIN_EMAIL", sender)  # defaults to sender if not set
 
-    missing = [k for k, v in {"EMAIL_FROM": sender, "EMAIL_PASSWORD": password, "ADMIN_EMAIL (or EMAIL_FROM)": admin}.items() if not v]
-    if missing:
-        print(f"  [alert] Skipping admin notification — missing env vars: {', '.join(missing)}")
+    if not all([sender, password, admin]):
+        print(f"  [alert] Email not configured — skipping admin notification")
         return
 
     try:
@@ -118,7 +117,7 @@ def notify_new_registration(first_name: str, last_name: str, email: str, profess
             f"Profession: {profession}\n"
         )
         msg = MIMEText(body)
-        msg["Subject"] = f"New user: {first_name} {last_name}"
+        msg["Subject"] = f"🆕 New user: {first_name} {last_name}"
         msg["From"]    = sender
         msg["To"]      = admin
 
@@ -126,13 +125,9 @@ def notify_new_registration(first_name: str, last_name: str, email: str, profess
             server.login(sender, password)
             server.sendmail(sender, admin, msg.as_string())
 
-        print(f"  [alert] ✅ Admin notified about new user: {email} → sent to {admin}")
-    except smtplib.SMTPAuthenticationError:
-        print(f"  [alert] ❌ SMTP auth failed — check EMAIL_FROM and EMAIL_PASSWORD (use App Password, not account password)")
-    except smtplib.SMTPException as e:
-        print(f"  [alert] ❌ SMTP error: {e}")
+        print(f"  [alert] Admin notified about new user: {email}")
     except Exception as e:
-        print(f"  [alert] ❌ Unexpected error sending admin notification: {e}")
+        print(f"  [alert] Failed to send admin notification: {e}")
 
 
 # ── POST /register ────────────────────────────────────────────
