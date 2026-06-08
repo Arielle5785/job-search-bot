@@ -8,9 +8,3 @@ services:
     envVars:
       - key: DATABASE_URL
         sync: false
-      - key: EMAIL_FROM
-        sync: false
-      - key: EMAIL_PASSWORD
-        sync: false
-      - key: ADMIN_EMAIL
-        sync: false

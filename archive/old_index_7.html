@@ -1114,7 +1114,7 @@
             const email = document.getElementById('email').value.trim();
             const profession = document.getElementById('profession').value.trim();
             const city = [...document.getElementById('city').selectedOptions].map(o => o.value);
-            const defaultWebsites = ['linkedin.com', 'il.indeed.com', 'startupforstartup.com', 'nbn.org.il', 'jobshop.co.il', 'cruitie.com'];
+            const defaultWebsites = ['linkedin.com', 'il.indeed.com', 'startupforstartup.com', 'nbn.org.il', 'jobshop.co.il', , 'cruitie.com'];
 
             if (!nameVal || !email || !profession) {
                 errorMsg.textContent = 'Please fill in name, email and job title.';
