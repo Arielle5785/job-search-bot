@@ -26,6 +26,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Restore seen-jobs cache
+        uses: actions/cache@v4
+        with:
+          path: seen_jobs_cache_*.json
+          key: job-cache-${{ github.run_id }}
+          restore-keys: job-cache-
       - name: Install dependencies
         run: pip install requests beautifulsoup4 python-dotenv selenium webdriver-manager anthropic psycopg2-binary
       - name: Install Chrome
@@ -41,23 +47,4 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           IS_MANUAL: ${{ github.event_name == 'workflow_dispatch' }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DEBUG_SCRAPE: "true"
           # USERS_JSON: ${{ secrets.USERS_JSON }} — replaced by Neon DB
-
-      - name: Save seen-jobs cache
-        if: always()
-        run: |
-          git config user.email "github-actions@github.com"
-          git config user.name "GitHub Actions"
-          shopt -s nullglob
-          files=(seen_jobs_cache_*.json)
-          if [ ${#files[@]} -gt 0 ]; then
-            git add seen_jobs_cache_*.json
-            git diff --staged --quiet || git commit -m "chore: update seen-jobs cache [skip ci]"
-            git pull --rebase origin master
-            git push
-          else
-            echo "No cache files found — nothing to commit"
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
