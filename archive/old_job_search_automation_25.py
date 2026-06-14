@@ -9,7 +9,6 @@ Sources scraped (BeautifulSoup + requests / Selenium):
   - JobShop            (jobshop.co.il)
   - LinkedIn           (best-effort, graceful fail if blocked)
   - Indeed IL          (il.indeed.com)
-  - Cruitie            (cruitie.com, Israel-only)
 
 MULTI-USER SETUP
   Add USERS_JSON to GitHub Secrets (Settings > Secrets > Actions):
@@ -242,7 +241,7 @@ EXCLUDE_KEYWORDS = [
 
 # Israel-only boards — skip the location gate for these
 ISRAEL_NATIVE_SOURCES = {
-    "startupforstartup", "lastartup", "jobshop", "nefesh b'nefesh", "indeed il", "cruitie"
+    "startupforstartup", "lastartup", "jobshop", "nefesh b'nefesh", "indeed il"
 }
 
 
@@ -461,14 +460,12 @@ def fetch_startup_for_startup(search_terms: list) -> list:
     BASE_URL = "https://www.startupforstartup.com"
     jobs     = []
     driver   = None
-    debug    = os.getenv("DEBUG_SCRAPE", "false").lower() == "true"
 
     try:
         driver = get_selenium_driver()
         for term in search_terms:
             encoded = requests.utils.quote(term)
             url = f"{BASE_URL}/jobs-in-startups/?s={encoded}"
-            timed_out = False
             try:
                 driver.get(url)
                 WebDriverWait(driver, 10).until(
@@ -476,14 +473,12 @@ def fetch_startup_for_startup(search_terms: list) -> list:
                 )
                 time.sleep(2)
             except Exception:
-                timed_out = True
                 driver.get(f"{BASE_URL}/jobs-in-startups/")
                 time.sleep(3)
 
             soup  = BeautifulSoup(driver.page_source, "html.parser")
             cards = soup.select("div.job-mini-card-wrap")
 
-            valid_count = 0
             for card in cards[:40]:
                 try:
                     title_el = card.select_one("div.job-mini-card-logo-title h4") or \
@@ -503,14 +498,8 @@ def fetch_startup_for_startup(search_terms: list) -> list:
                             "description": "", "source": SOURCE,
                             "posted_date": posted_date,
                         })
-                        valid_count += 1
                 except Exception:
                     continue
-
-            if debug:
-                print(f"  [{SOURCE}][debug] term='{term}' timed_out={timed_out} "
-                      f"cards_found={len(cards)} valid_jobs={valid_count} url={url}")
-
             time.sleep(REQUEST_DELAY)
 
     except Exception as e:
@@ -535,14 +524,12 @@ def fetch_nefesh_bnefesh(search_terms: list) -> list:
     BASE_URL = "https://www.nbn.org.il"
     jobs     = []
     driver   = None
-    debug    = os.getenv("DEBUG_SCRAPE", "false").lower() == "true"
 
     try:
         driver = get_selenium_driver()
         for term in search_terms:
             encoded = requests.utils.quote(term)
             url = f"{BASE_URL}/jobboard/?search_keywords={encoded}&search_region=71"
-            timed_out = False
             try:
                 driver.get(url)
                 WebDriverWait(driver, 10).until(
@@ -552,13 +539,11 @@ def fetch_nefesh_bnefesh(search_terms: list) -> list:
                 )
                 time.sleep(2)
             except Exception:
-                timed_out = True
                 time.sleep(3)
 
             soup  = BeautifulSoup(driver.page_source, "html.parser")
             cards = soup.select("li.job_listing, div.job_listing, article.job_listing")
 
-            valid_count = 0
             for card in cards[:40]:
                 try:
                     title_el   = card.select_one("h3.job_listing-title, h3, h2")
@@ -579,14 +564,8 @@ def fetch_nefesh_bnefesh(search_terms: list) -> list:
                             "description": "", "source": SOURCE,
                             "posted_date": posted_date,
                         })
-                        valid_count += 1
                 except Exception:
                     continue
-
-            if debug:
-                print(f"  [{SOURCE}][debug] term='{term}' timed_out={timed_out} "
-                      f"cards_found={len(cards)} valid_jobs={valid_count} url={url}")
-
             time.sleep(REQUEST_DELAY)
 
     except Exception as e:
@@ -611,14 +590,12 @@ def fetch_jobshop(search_terms: list) -> list:
     BASE_URL = "https://jobshop.co.il"
     jobs     = []
     driver   = None
-    debug    = os.getenv("DEBUG_SCRAPE", "false").lower() == "true"
 
     try:
         driver = get_selenium_driver()
         for term in search_terms:
             encoded = requests.utils.quote(term)
             url = f"{BASE_URL}/?s={encoded}"
-            timed_out = False
             try:
                 driver.get(url)
                 WebDriverWait(driver, 10).until(
@@ -628,13 +605,11 @@ def fetch_jobshop(search_terms: list) -> list:
                 )
                 time.sleep(2)
             except Exception:
-                timed_out = True
                 time.sleep(3)
 
             soup  = BeautifulSoup(driver.page_source, "html.parser")
             cards = soup.select("article, div.job-listing")
 
-            valid_count = 0
             for card in cards[:40]:
                 try:
                     title_el   = card.select_one("h2, h3, .entry-title")
@@ -651,14 +626,8 @@ def fetch_jobshop(search_terms: list) -> list:
                             "location": "Tel Aviv, Israel", "url": href,
                             "description": "", "source": SOURCE,
                         })
-                        valid_count += 1
                 except Exception:
                     continue
-
-            if debug:
-                print(f"  [{SOURCE}][debug] term='{term}' timed_out={timed_out} "
-                      f"cards_found={len(cards)} valid_jobs={valid_count} url={url}")
-
             time.sleep(REQUEST_DELAY)
 
     except Exception as e:
@@ -730,7 +699,6 @@ def fetch_indeed(search_terms: list) -> list:
     BASE_URL = "https://il.indeed.com"
     jobs     = []
     driver   = None
-    debug    = os.getenv("DEBUG_SCRAPE", "false").lower() == "true"
 
     try:
         driver = get_selenium_driver()
@@ -738,7 +706,6 @@ def fetch_indeed(search_terms: list) -> list:
         for term in search_terms:
             encoded = requests.utils.quote(term)
             url = f"{BASE_URL}/jobs?q={encoded}&l=Tel+Aviv"
-            timed_out = False
             try:
                 driver.get(url)
                 WebDriverWait(driver, 12).until(
@@ -748,7 +715,6 @@ def fetch_indeed(search_terms: list) -> list:
                 )
                 time.sleep(2)
             except Exception:
-                timed_out = True
                 time.sleep(3)
 
             soup = BeautifulSoup(driver.page_source, "html.parser")
@@ -759,7 +725,6 @@ def fetch_indeed(search_terms: list) -> list:
                 "td.resultContent"
             )
 
-            valid_count = 0
             for card in cards[:30]:
                 try:
                     title_el = card.select_one(
@@ -800,148 +765,8 @@ def fetch_indeed(search_terms: list) -> list:
                             "url": href, "description": "",
                             "source": SOURCE, "posted_date": posted_date,
                         })
-                        valid_count += 1
                 except Exception:
                     continue
-
-            if debug:
-                page_title = ""
-                try:
-                    page_title = driver.title
-                except Exception:
-                    pass
-                blocked_signal = any(
-                    s in soup.get_text(" ", strip=True).lower()
-                    for s in ["verify you are human", "captcha", "additional verification", "access denied"]
-                )
-                print(f"  [{SOURCE}][debug] term='{term}' timed_out={timed_out} "
-                      f"cards_found={len(cards)} valid_jobs={valid_count} "
-                      f"page_title='{page_title}' possible_block={blocked_signal} url={url}")
-
-            time.sleep(REQUEST_DELAY)
-
-    except Exception as e:
-        print(f"  [{SOURCE}] Selenium error: {e}")
-    finally:
-        if driver:
-            driver.quit()
-
-    seen, unique = set(), []
-    for j in jobs:
-        k = make_job_id(j)
-        if k not in seen:
-            seen.add(k); unique.append(j)
-    print(f"  {SOURCE}: {len(unique)} listings")
-    return unique
-
-
-# ── Cruitie (Selenium / Next.js SSR) ──────────────────────────────────────────
-
-def fetch_cruitie(search_terms: list) -> list:
-    """
-    Scrape https://www.cruitie.com/jobs#jobs-list
-    Next.js SSR — plain requests is blocked, Selenium is required.
-    Search URL: https://www.cruitie.com/jobs?search=TERM
-    Card structure: h3 (title) + p (Company · Region · Date) + a[href^="/jobs/"]
-    Uses multiple defensive selector strategies since the DOM may change.
-    """
-    SOURCE   = "Cruitie"
-    BASE_URL = "https://www.cruitie.com"
-    jobs     = []
-    driver   = None
-    debug    = os.getenv("DEBUG_SCRAPE", "false").lower() == "true"
-
-    try:
-        driver = get_selenium_driver()
-
-        for term in search_terms:
-            encoded = requests.utils.quote(term)
-            url = f"{BASE_URL}/jobs?search={encoded}#jobs-list"
-            timed_out = False
-            try:
-                driver.get(url)
-                WebDriverWait(driver, 12).until(
-                    EC.presence_of_element_located(
-                        (By.CSS_SELECTOR, "a[href*='/jobs/']")
-                    )
-                )
-                time.sleep(2)
-            except Exception:
-                timed_out = True
-                try:
-                    driver.get(f"{BASE_URL}/jobs")
-                    time.sleep(3)
-                except Exception:
-                    continue
-
-            soup = BeautifulSoup(driver.page_source, "html.parser")
-
-            # Strategy 1: anchor-based — each job card is an <a href="/jobs/slug">
-            # wrapping (or sibling to) an h3 title and a p with company/region/date
-            cards = soup.select("a[href^='/jobs/']")
-
-            # Strategy 2: container-based fallback if anchors aren't wrappers
-            if not cards:
-                cards = (
-                    soup.select("div[class*='job-card']") or
-                    soup.select("article[class*='job']") or
-                    soup.select("li[class*='job']")
-                )
-
-            if not cards:
-                if debug:
-                    page_title = ""
-                    try:
-                        page_title = driver.title
-                    except Exception:
-                        pass
-                    print(f"  [{SOURCE}][debug] term='{term}' timed_out={timed_out} "
-                          f"cards_found=0 page_title='{page_title}' url={url}")
-                print(f"  [{SOURCE}] No cards found for '{term}' — page may have changed")
-                continue
-
-            valid_count = 0
-            for card in cards[:30]:
-                try:
-                    # Title — h3 inside the card, or fallback to nearest h3 sibling
-                    title_el = card.select_one("h3") or card.find_next("h3") or card.find_previous("h3")
-                    title = title_el.get_text(strip=True) if title_el else ""
-
-                    # Meta line — "Company · Region · Date"
-                    meta_el = card.select_one("p") or card.find_next("p")
-                    meta_text = meta_el.get_text(strip=True) if meta_el else ""
-
-                    company, location, posted_date = "", "Israel", ""
-                    if meta_text:
-                        parts = [p.strip() for p in re.split(r"[·•|]", meta_text) if p.strip()]
-                        if len(parts) >= 1:
-                            company = parts[0]
-                        if len(parts) >= 2:
-                            location = parts[1]
-                        if len(parts) >= 3:
-                            posted_date = parts[2]
-
-                    # URL
-                    href = card.get("href", "") if card.name == "a" else ""
-                    if not href:
-                        link_el = card.select_one("a[href^='/jobs/']")
-                        href = link_el["href"] if link_el else ""
-                    url_full = href if href.startswith("http") else f"{BASE_URL}{href}" if href else ""
-
-                    if title and url_full:
-                        jobs.append({
-                            "title": title, "company": company,
-                            "location": location or "Israel", "url": url_full,
-                            "description": "", "source": SOURCE,
-                            "posted_date": posted_date,
-                        })
-                        valid_count += 1
-                except Exception:
-                    continue
-
-            if debug:
-                print(f"  [{SOURCE}][debug] term='{term}' timed_out={timed_out} "
-                      f"cards_found={len(cards)} valid_jobs={valid_count} url={url}")
 
             time.sleep(REQUEST_DELAY)
 
@@ -974,7 +799,6 @@ def fetch_all_sources(search_terms: list, users: list = None) -> list:
     all_jobs += fetch_nefesh_bnefesh(search_terms)
     all_jobs += fetch_jobshop(search_terms)
     all_jobs += fetch_indeed(search_terms)
-    all_jobs += fetch_cruitie(search_terms)
 
     # LinkedIn: query per-user so every profession gets coverage
     if users:
@@ -1008,7 +832,6 @@ SOURCE_COLORS = {
     "JobShop":           "#fef9c3",
     "LinkedIn":          "#dbeafe",
     "Indeed IL":         "#dcfce7",
-    "Cruitie":           "#ede9fe",
 }
 
 
