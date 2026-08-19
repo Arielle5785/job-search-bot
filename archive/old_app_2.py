@@ -11,13 +11,10 @@ Routes:
 """
 
 import os
-import secrets
-import datetime
 import smtplib
 import psycopg2
 import psycopg2.extras
 from email.mime.text import MIMEText
-from functools import wraps
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -42,154 +39,6 @@ def get_db():
 @app.route("/health")
 def health():
     return jsonify({"status": "ok"})
-
-
-# ── Auth: token decorator ─────────────────────────────────────
-
-def require_edit_token(f):
-    """
-    Decorator for GET /user and PUT /user.
-    Checks X-Edit-Token header — returns 401 if missing, wrong, or expired.
-    """
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        token = request.headers.get("X-Edit-Token", "").strip()
-        email = kwargs.get("email", "").lower().strip()
-        if not token or not email:
-            return jsonify({"error": "Unauthorized"}), 401
-        try:
-            conn = get_db()
-            cur  = conn.cursor()
-            cur.execute(
-                "SELECT edit_token, edit_token_exp FROM user_t WHERE email = %s",
-                (email,)
-            )
-            row = cur.fetchone()
-            cur.close()
-            conn.close()
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
-        if not row:
-            return jsonify({"error": "Not found"}), 404
-        stored = row["edit_token"] or ""
-        exp    = row["edit_token_exp"]
-        now    = datetime.datetime.now(datetime.timezone.utc)
-        if not secrets.compare_digest(stored, token):
-            return jsonify({"error": "Unauthorized"}), 401
-        if exp is None or now > exp:
-            return jsonify({"error": "Token expired — please verify again"}), 401
-        return f(*args, **kwargs)
-    return decorated
-
-
-def _send_verification_email(to_email: str, code: str):
-    """Send a 6-digit verification code by email."""
-    sender   = os.environ.get("EMAIL_FROM")
-    password = os.environ.get("EMAIL_PASSWORD")
-    if not sender or not password:
-        raise RuntimeError("EMAIL_FROM or EMAIL_PASSWORD not set")
-    body = (
-        f"Your Job Bot verification code is: {code}\n\n"
-        "It expires in 15 minutes.\n"
-        "If you didn't request this, ignore this email."
-    )
-    msg = MIMEText(body)
-    msg["Subject"] = "Your Job Bot verification code"
-    msg["From"]    = sender
-    msg["To"]      = to_email
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-        smtp.login(sender, password)
-        smtp.send_message(msg)
-
-
-# ── POST /auth/request-code ───────────────────────────────────
-
-@app.route("/auth/request-code", methods=["POST"])
-def request_code():
-    """Send a 6-digit verification code to the user's registered email."""
-    data  = request.get_json(silent=True) or {}
-    email = (data.get("email") or "").strip().lower()
-    if not email or "@" not in email:
-        return jsonify({"error": "Valid email required"}), 400
-    try:
-        conn = get_db()
-        cur  = conn.cursor()
-        cur.execute(
-            "SELECT id FROM user_t WHERE email = %s AND is_active = TRUE",
-            (email,)
-        )
-        if not cur.fetchone():
-            cur.close()
-            conn.close()
-            return jsonify({"error": "Not found"}), 404
-        code     = str(secrets.randbelow(900000) + 100000)   # always 6 digits
-        code_exp = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=15)
-        cur.execute(
-            "UPDATE user_t SET auth_code = %s, auth_code_exp = %s WHERE email = %s",
-            (code, code_exp, email)
-        )
-        conn.commit()
-        cur.close()
-        conn.close()
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-    try:
-        _send_verification_email(email, code)
-    except Exception as e:
-        print(f"  [auth] Failed to send code to {email}: {e}")
-        return jsonify({"error": "Could not send verification email"}), 500
-    return jsonify({"ok": True}), 200
-
-
-# ── POST /auth/verify-code ────────────────────────────────────
-
-@app.route("/auth/verify-code", methods=["POST"])
-def verify_code():
-    """Validate the 6-digit code and return a short-lived edit token."""
-    data  = request.get_json(silent=True) or {}
-    email = (data.get("email") or "").strip().lower()
-    code  = (data.get("code")  or "").strip()
-    if not email or not code:
-        return jsonify({"error": "Email and code required"}), 400
-    try:
-        conn = get_db()
-        cur  = conn.cursor()
-        cur.execute(
-            "SELECT auth_code, auth_code_exp FROM user_t WHERE email = %s",
-            (email,)
-        )
-        row = cur.fetchone()
-        if not row:
-            cur.close()
-            conn.close()
-            return jsonify({"error": "Not found"}), 404
-        stored_code = row["auth_code"] or ""
-        code_exp    = row["auth_code_exp"]
-        now         = datetime.datetime.now(datetime.timezone.utc)
-        if not secrets.compare_digest(stored_code, code):
-            cur.close()
-            conn.close()
-            return jsonify({"error": "Invalid code"}), 401
-        if code_exp is None or now > code_exp:
-            cur.close()
-            conn.close()
-            return jsonify({"error": "Code expired"}), 401
-        # Issue a 1-hour edit token, clear the one-time code
-        token     = secrets.token_hex(32)
-        token_exp = now + datetime.timedelta(hours=1)
-        cur.execute(
-            """UPDATE user_t
-               SET auth_code = NULL, auth_code_exp = NULL,
-                   edit_token = %s, edit_token_exp = %s
-               WHERE email = %s""",
-            (token, token_exp, email)
-        )
-        conn.commit()
-        cur.close()
-        conn.close()
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-    return jsonify({"token": token}), 200
 
 
 # ── GET /professions ──────────────────────────────────────────
@@ -232,9 +81,8 @@ def get_variants(profession_id):
 # ── GET /user/<email> ─────────────────────────────────────────
 
 @app.route("/user/<email>")
-@require_edit_token
 def get_user(email):
-    """Return a user's full data for the edit form — requires valid X-Edit-Token."""
+    """Return a user's full data for the edit form."""
     try:
         conn = get_db()
         cur = conn.cursor()
@@ -414,9 +262,8 @@ def register():
 # ── PUT /user/<email> ─────────────────────────────────────────
 
 @app.route("/user/<email>", methods=["PUT"])
-@require_edit_token
 def update_user(email):
-    """Update an existing user — requires valid X-Edit-Token."""
+    """Update an existing user — replaces all junction table entries."""
     data = request.get_json()
     if not data:
         return jsonify({"error": "No JSON body"}), 400
