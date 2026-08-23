@@ -922,14 +922,11 @@ def fetch_all_sources(search_terms: list, users: list = None) -> list:
     """
     print("\nScraping sources:")
     all_jobs = []
-    # StartupForStartup ignores search query — same 11 cards every time, scrape once
-    all_jobs += fetch_startup_for_startup(search_terms[:1])
+    all_jobs += fetch_startup_for_startup(search_terms)
     all_jobs += fetch_nefesh_bnefesh(search_terms)
     all_jobs += fetch_jobshop(search_terms)
-    # Indeed IL blocked by Cloudflare on GitHub Actions — cap to 5 terms to save time
-    all_jobs += fetch_indeed(search_terms[:5])
-    # Cruitie disabled — fully JS-rendered, returns 0 results (Aug 2026)
-    # all_jobs += fetch_cruitie(search_terms)
+    all_jobs += fetch_indeed(search_terms)
+    all_jobs += fetch_cruitie(search_terms)
 
     # LinkedIn: query per-user so every profession gets coverage
     if users:
@@ -1130,7 +1127,7 @@ def main():
     print(f"\nIsrael time: {israel_time}")
 
     # Defined once outside the loop (was incorrectly redefined every iteration)
-    def is_scheduled_now(freq_list, current_total_minutes, tolerance=75):
+    def is_scheduled_now(freq_list, current_total_minutes, tolerance=90):
         for t in freq_list:
             try:
                 h, m = map(int, t.strip().split(":"))
