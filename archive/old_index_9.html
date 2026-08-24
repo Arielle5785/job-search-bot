@@ -1,0 +1,1501 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Job Search Bot — Register</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap"
+        rel="stylesheet" />
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #f5f2ee;
+            --card: #ffffff;
+            --ink: #1a1714;
+            --muted: #7a756f;
+            --accent: #2d6a4f;
+            --accent-light: #e8f4f0;
+            --border: #e0dbd4;
+            --error: #c0392b;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+
+        .wrap {
+            width: 100%;
+            max-width: 580px;
+        }
+
+        .header {
+            margin-bottom: 24px;
+            animation: fadeUp 0.6s ease both;
+        }
+
+        .header .eyebrow {
+            font-size: 11px;
+            font-weight: 500;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 10px;
+        }
+
+        .header h1 {
+            font-family: 'DM Serif Display', serif;
+            font-size: 32px;
+            color: var(--ink);
+            line-height: 1.15;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            font-size: 14px;
+            color: var(--muted);
+            line-height: 1.65;
+        }
+
+        /* Mode tabs */
+        .mode-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            animation: fadeUp 0.5s ease both;
+        }
+
+        .mode-tab {
+            flex: 1;
+            padding: 11px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            color: var(--muted);
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .mode-tab.active {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 36px;
+            animation: fadeUp 0.6s 0.1s ease both;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+        }
+
+        .section-title {
+            font-size: 11px;
+            font-weight: 500;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin: 28px 0 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--accent-light);
+        }
+
+        .section-title:first-child {
+            margin-top: 0;
+        }
+
+        .field {
+            margin-bottom: 20px;
+        }
+
+        .field-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+
+        .field-label span.req {
+            color: var(--accent);
+            margin-left: 2px;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        select {
+            width: 100%;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 15px;
+            color: var(--ink);
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 16px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            appearance: none;
+        }
+
+        select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237a756f' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            padding-right: 36px;
+            cursor: pointer;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-light);
+            background: #fff;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 6px;
+            line-height: 1.5;
+        }
+
+        /* Two-column layout for selects */
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        /* Chip-style multi-select */
+        .chip-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+
+        .chip {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 9px 14px;
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+            font-size: 14px;
+            color: var(--ink);
+            user-select: none;
+        }
+
+        .chip input[type="checkbox"] {
+            width: 15px;
+            height: 15px;
+            min-width: 15px;
+            padding: 0;
+            accent-color: var(--accent);
+            cursor: pointer;
+        }
+
+        .chip:has(input:checked) {
+            border-color: var(--accent);
+            background: var(--accent-light);
+        }
+
+        /* Title variants */
+        .variants-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .variant-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .variant-row input {
+            flex: 1;
+        }
+
+        .remove-btn {
+            background: none;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            width: 38px;
+            height: 44px;
+            cursor: pointer;
+            color: var(--muted);
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s, color 0.2s;
+            flex-shrink: 0;
+        }
+
+        .remove-btn:hover {
+            background: #fef2f2;
+            color: var(--error);
+            border-color: #fca5a5;
+        }
+
+        .add-btn {
+            background: none;
+            border: 1px dashed var(--border);
+            border-radius: 8px;
+            width: 100%;
+            padding: 10px;
+            cursor: pointer;
+            color: var(--muted);
+            font-size: 13px;
+            font-family: 'DM Sans', sans-serif;
+            transition: background 0.2s, border-color 0.2s;
+            margin-top: 6px;
+        }
+
+        .add-btn:hover {
+            background: var(--accent-light);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* Websites grid */
+        .websites-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .site-wrap {
+            position: relative;
+        }
+
+        .site-num {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 11px;
+            color: var(--muted);
+            font-weight: 600;
+            pointer-events: none;
+        }
+
+        .site-wrap input {
+            padding-left: 26px;
+        }
+
+        .divider {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 24px 0;
+        }
+
+        /* Edit notice */
+        .edit-notice {
+            display: none;
+            background: var(--accent-light);
+            border: 1px solid var(--accent);
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: var(--accent);
+            line-height: 1.6;
+        }
+
+        .btn {
+            width: 100%;
+            background: var(--accent);
+            color: #fff;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 15px;
+            font-weight: 500;
+            border: none;
+            border-radius: 10px;
+            padding: 15px;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.15s;
+            letter-spacing: 0.02em;
+        }
+
+        .btn:hover {
+            opacity: 0.88;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .success {
+            display: none;
+            text-align: center;
+            padding: 28px 0 8px;
+            animation: fadeUp 0.4s ease both;
+        }
+
+        .success .icon {
+            font-size: 44px;
+            margin-bottom: 14px;
+        }
+
+        .success h2 {
+            font-family: 'DM Serif Display', serif;
+            font-size: 24px;
+            color: var(--ink);
+            margin-bottom: 8px;
+        }
+
+        .success p {
+            font-size: 14px;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .error-msg {
+            display: none;
+            background: #fef2f2;
+            border: 1px solid #fca5a5;
+            color: var(--error);
+            font-size: 13px;
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-top: 12px;
+        }
+
+        .footer-note {
+            font-size: 12px;
+            color: var(--muted);
+            text-align: center;
+            margin-top: 20px;
+            line-height: 1.6;
+            animation: fadeUp 0.6s 0.2s ease both;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(14px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+
+        /* Profession autocomplete dropdown */
+        .profession-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.10);
+            z-index: 100;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+
+        .profession-dropdown.open {
+            display: block;
+        }
+
+        .dropdown-item {
+            padding: 11px 16px;
+            font-size: 14px;
+            cursor: pointer;
+            color: var(--ink);
+            transition: background 0.15s;
+        }
+
+        .dropdown-item:hover,
+        .dropdown-item.active {
+            background: var(--accent-light);
+            color: var(--accent);
+        }
+
+        /* ── Edit Modal ─────────────────────────────────────────────────── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 15, 15, 0.5);
+            backdrop-filter: blur(5px);
+            z-index: 999;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-overlay.open {
+            display: flex;
+        }
+
+        .modal-box {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 36px;
+            width: 100%;
+            max-width: 520px;
+            box-shadow: 0 32px 80px rgba(0, 0, 0, 0.15);
+            animation: modalIn 0.22s ease both;
+            position: relative;
+        }
+
+        .modal-box.wide {
+            max-width: 640px;
+            max-height: 88vh;
+            overflow-y: auto;
+        }
+
+        @keyframes modalIn {
+            from {
+                opacity: 0;
+                transform: translateY(-18px) scale(0.97);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 16px;
+            right: 18px;
+            background: none;
+            border: none;
+            font-size: 22px;
+            color: var(--muted);
+            cursor: pointer;
+            line-height: 1;
+            padding: 4px;
+        }
+
+        .modal-close:hover {
+            color: var(--ink);
+        }
+
+        .modal-eyebrow {
+            font-size: 11px;
+            font-weight: 500;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 8px;
+        }
+
+        .modal-box h2 {
+            font-family: 'DM Serif Display', serif;
+            font-size: 22px;
+            color: var(--ink);
+            margin-bottom: 6px;
+        }
+
+        .modal-box p.modal-sub {
+            font-size: 13px;
+            color: var(--muted);
+            line-height: 1.6;
+            margin-bottom: 22px;
+        }
+
+        .modal-field {
+            margin-bottom: 16px;
+        }
+
+        .modal-field label {
+            display: block;
+            font-size: 11px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+
+        .modal-error {
+            display: none;
+            background: #fef2f2;
+            border: 1px solid #fca5a5;
+            color: var(--error);
+            font-size: 12px;
+            border-radius: 8px;
+            padding: 9px 13px;
+            margin-bottom: 14px;
+        }
+
+        .modal-btns {
+            display: flex;
+            gap: 10px;
+            margin-top: 22px;
+        }
+
+        .modal-btns .btn {
+            margin: 0;
+        }
+
+        .btn-ghost {
+            flex: 1;
+            background: var(--bg);
+            color: var(--muted);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 13px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-ghost:hover {
+            background: var(--border);
+            color: var(--ink);
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255, 255, 255, 0.35);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Edit form inside modal */
+        .modal-section-title {
+            font-size: 10px;
+            font-weight: 500;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin: 22px 0 12px;
+            padding-bottom: 7px;
+            border-bottom: 1px solid var(--accent-light);
+        }
+
+        .modal-section-title:first-of-type {
+            margin-top: 4px;
+        }
+
+        .modal-two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        /* Tag pills for edit modal */
+        .tag-field {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 8px 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            min-height: 46px;
+            background: var(--bg);
+            cursor: text;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .tag-field:focus-within {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-light);
+            background: #fff;
+        }
+
+        .tag-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: var(--accent-light);
+            color: var(--accent);
+            border-radius: 6px;
+            padding: 4px 10px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .tag-pill .rm {
+            cursor: pointer;
+            font-size: 15px;
+            line-height: 1;
+            opacity: 0.55;
+        }
+
+        .tag-pill .rm:hover {
+            opacity: 1;
+        }
+
+        .tag-add-input {
+            border: none !important;
+            background: transparent !important;
+            padding: 4px 6px !important;
+            font-size: 13px !important;
+            min-width: 120px;
+            flex: 1;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        .modal-user-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--accent-light);
+            color: var(--accent);
+            border-radius: 8px;
+            padding: 7px 12px;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .save-status {
+            text-align: center;
+            font-size: 13px;
+            font-weight: 500;
+            min-height: 20px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+
+        <div class="header">
+            <div class="eyebrow">🤖 Job Search Bot</div>
+            <h1 id="pageTitle">Get job alerts tailored to you</h1>
+            <p>Fill in your details. The bot searches your chosen job boards and sends matching roles straight to your
+                inbox.</p>
+        </div>
+
+        <div class="mode-tabs">
+            <button class="mode-tab active" onclick="switchMode('register')">📝 New Registration</button>
+            <button class="mode-tab" id="tabEdit" onclick="openEditModal()">✏️ Edit My Preferences</button>
+        </div>
+
+        <div class="card">
+
+            <div class="edit-notice" id="editNotice">
+                To update your preferences, enter your registered email and change any fields below. Your previous
+                settings will be replaced with what you submit here.
+            </div>
+
+            <form id="regForm">
+
+                <!-- ── 1. Personal Details ── -->
+                <div class="section-title">Personal Details</div>
+
+                <div class="field">
+                    <span class="field-label">Your name <span class="req">*</span></span>
+                    <input type="text" id="name" placeholder="e.g. Sara Cohen" required />
+                </div>
+
+                <div class="field">
+                    <span class="field-label">Your email <span class="req">*</span></span>
+                    <input type="email" id="email" placeholder="sara@gmail.com" required />
+                </div>
+
+                <!-- ── 2. Job Preferences ── -->
+                <div class="section-title">Job Preferences</div>
+
+                <div class="field">
+                    <span class="field-label">Main job title <span class="req">*</span></span>
+                    <input type="text" id="profession" placeholder="e.g. Customer Success Manager" required
+                        autocomplete="off" />
+                    <div id="professionDropdown" class="profession-dropdown"></div>
+                    <p class="hint">Your primary title — add variations below to cast a wider net.</p>
+                </div>
+
+                <div class="field">
+                    <span class="field-label">Title variants <span
+                            style="font-weight:300;text-transform:none;letter-spacing:0;">(recommended)</span></span>
+                    <div class="variants-list" id="variantsList">
+                        <div class="variant-row">
+                            <input type="text" name="variant" placeholder="e.g. Customer Success Lead" />
+                            <button type="button" class="remove-btn" onclick="removeVariant(this)">×</button>
+                        </div>
+                        <div class="variant-row">
+                            <input type="text" name="variant" placeholder="e.g. Account Manager" />
+                            <button type="button" class="remove-btn" onclick="removeVariant(this)">×</button>
+                        </div>
+                        <div class="variant-row">
+                            <input type="text" name="variant" placeholder="e.g. Client Success Manager" />
+                            <button type="button" class="remove-btn" onclick="removeVariant(this)">×</button>
+                        </div>
+                    </div>
+                    <button type="button" class="add-btn" onclick="addVariant()">+ Add another variant</button>
+                    <p class="hint">Only the variants you list here (plus your main job title) are used to match jobs.
+                    </p>
+                </div>
+
+                <!-- Seniority level -->
+                <div class="field">
+                    <span class="field-label">Seniority level <span class="req">*</span></span>
+                    <div class="chip-group">
+                        <label class="chip"><input type="checkbox" name="seniority" value="Junior" /> Junior</label>
+                        <label class="chip"><input type="checkbox" name="seniority" value="Senior" /> Senior</label>
+                        <label class="chip"><input type="checkbox" name="seniority" value="Executive" />
+                            Executive</label>
+                        <label class="chip"><input type="checkbox" name="seniority" value="C-Level" /> C-Level</label>
+                    </div>
+                </div>
+
+                <!-- Company type -->
+                <div class="field">
+                    <span class="field-label">Company type <span class="req">*</span></span>
+                    <div class="chip-group">
+                        <label class="chip"><input type="checkbox" name="companyType" value="B2B" /> B2B</label>
+                        <label class="chip"><input type="checkbox" name="companyType" value="B2C" /> B2C</label>
+                        <label class="chip"><input type="checkbox" name="companyType" value="B2G" /> B2G</label>
+                    </div>
+                </div>
+
+                <!-- ── 3. Location ── -->
+                <div class="section-title">Location</div>
+
+                <div class="field two-col">
+                    <div>
+                        <span class="field-label">City <span class="req">*</span></span>
+                        <p class="hint" style="margin-bottom:6px;">Hold Ctrl (PC) or &#8984; (Mac) to select multiple
+                            cities.</p>
+                        <select id="city" multiple required style="height:160px;padding:8px;">
+
+                            <optgroup label="Center">
+                                <option>Tel Aviv</option>
+                                <option>Ramat Gan</option>
+                                <option>Petah Tikva</option>
+                                <option>Bnei Brak</option>
+                                <option>Herzliya</option>
+                                <option>Ra'anana</option>
+                                <option>Hod HaSharon</option>
+                                <option>Kfar Saba</option>
+                                <option>Netanya</option>
+                                <option>Rehovot</option>
+                                <option>Rishon LeZion</option>
+                                <option>Holon</option>
+                                <option>Bat Yam</option>
+                                <option>Lod</option>
+                                <option>Ramla</option>
+                            </optgroup>
+                            <optgroup label="Jerusalem">
+                                <option>Jerusalem</option>
+                                <option>Modiin</option>
+                                <option>Beit Shemesh</option>
+                            </optgroup>
+                            <optgroup label="North">
+                                <option>Haifa</option>
+                                <option>Caesarea</option>
+                                <option>Yokneam</option>
+                                <option>Nazareth</option>
+                                <option>Tiberias</option>
+                            </optgroup>
+                            <optgroup label="South">
+                                <option>Beer Sheva</option>
+                                <option>Ashdod</option>
+                                <option>Ashkelon</option>
+                                <option>Eilat</option>
+                            </optgroup>
+                            <optgroup label="Other">
+                                <option>No preference</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div>
+                        <span class="field-label">Work type <span class="req">*</span></span>
+                        <select id="workType" required>
+                            <option value="" disabled selected>Select type</option>
+                            <option value="On-site">On-site</option>
+                            <option value="Hybrid">Hybrid</option>
+                            <option value="Remote">Remote</option>
+                            <option value="Remote or Hybrid">Remote or Hybrid</option>
+                            <option value="Any">Any (no preference)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- ── 4. Job Boards ── -->
+                <div class="section-title">Job Boards to Search</div>
+
+                <div class="field">
+                    <p class="hint" style="margin-bottom:12px;">Enter up to 6 websites. Leave blank to use the defaults:
+                        LinkedIn, Indeed IL, StartupForStartup, Nefesh B'Nefesh, JobShop, Cruitie.</p>
+                    <div class="websites-grid">
+                        <div class="site-wrap">
+                            <span class="site-num">1</span>
+                            <input type="text" id="site1" placeholder="linkedin.com" />
+                        </div>
+                        <div class="site-wrap">
+                            <span class="site-num">2</span>
+                            <input type="text" id="site2" placeholder="indeed.com" />
+                        </div>
+                        <div class="site-wrap">
+                            <span class="site-num">3</span>
+                            <input type="text" id="site3" placeholder="startupforstartup.com" />
+                        </div>
+                        <div class="site-wrap">
+                            <span class="site-num">4</span>
+                            <input type="text" id="site4" placeholder="nbn.org.il" />
+                        </div>
+                        <div class="site-wrap">
+                            <span class="site-num">5</span>
+                            <input type="text" id="site5" placeholder="jobshop.co.il" />
+                        </div>
+                        <div class="site-wrap">
+                            <span class="site-num">6</span>
+                            <input type="text" id="site6" placeholder="cruitie.com" value="cruitie.com" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── 5. Alert Frequency ── -->
+                <div class="section-title">Alert Frequency</div>
+
+                <div class="field">
+                    <span class="field-label">When do you want alerts? <span class="req">*</span></span>
+                    <div class="chip-group">
+                        <label class="chip"><input type="checkbox" name="frequency" value="08:00" /> 8:00 AM</label>
+                        <label class="chip"><input type="checkbox" name="frequency" value="12:00" /> 12:00 PM</label>
+                        <label class="chip"><input type="checkbox" name="frequency" value="17:00" /> 5:00 PM</label>
+                        <label class="chip"><input type="checkbox" name="frequency" value="21:00" /> 9:00 PM</label>
+                    </div>
+                    <p class="hint">Select one or more. Runs Monday–Friday (Israel time).</p>
+                </div>
+
+                <hr class="divider" />
+
+                <button type="submit" class="btn" id="submitBtn">Send my registration →</button>
+                <div class="error-msg" id="errorMsg"></div>
+
+                <div class="success" id="successMsg">
+                    <div class="icon">✅</div>
+                    <h2 id="successTitle">You're registered!</h2>
+                    <p id="successText">Your details have been sent. You'll receive job alerts at your chosen times once
+                        confirmed.</p>
+                </div>
+
+            </form>
+        </div>
+
+        <p class="footer-note">
+            Your data is kept private and used only to send you job alerts.<br />
+            To make changes, use the "Edit My Preferences" tab above.
+        </p>
+
+    </div>
+
+    <script>
+        // ── Config ────────────────────────────────────────────────────────
+        const API_URL = 'https://job-search-bot-n5tm.onrender.com';
+
+        // ── Known professions (local fallback) ────────────────────────────
+        const KNOWN_PROFESSIONS = [
+            'Customer Success Manager', 'Account Manager', 'Account Executive',
+            'Sales Development Representative', 'Business Development Manager',
+            'Product Manager', 'Project Manager', 'Marketing Manager',
+            'Operations Manager', 'HR Manager', 'Recruiter', 'Data Analyst',
+            'Software Engineer', 'Frontend Developer', 'Backend Developer',
+            'Full Stack Developer', 'DevOps Engineer', 'QA Engineer',
+            'UX Designer', 'UI Designer', 'Graphic Designer', 'Content Writer',
+            'SEO Specialist', 'Social Media Manager', 'Growth Hacker',
+            'Customer Support', 'Team Lead', 'VP Sales', 'VP Marketing',
+        ];
+
+        const PROFESSION_VARIANTS = {
+            'Customer Success Manager': ['Customer Success Lead', 'CSM', 'Account Manager', 'Client Success Manager', 'Customer Experience Manager'],
+            'Account Manager': ['Account Executive', 'Client Manager', 'Key Account Manager', 'Sales Manager'],
+            'Software Engineer': ['Software Developer', 'SWE', 'Programmer', 'Backend Engineer', 'Frontend Engineer'],
+        };
+
+        // ── Registration mode (register tab stays as-is) ──────────────────
+        // ── Wire up DOM-dependent listeners after page loads ────────────
+        document.addEventListener('DOMContentLoaded', function () {
+
+            // Tab register click
+            const tabReg = document.getElementById('tabRegister');
+            if (tabReg) tabReg.addEventListener('click', function () {
+                this.classList.add('active');
+                document.getElementById('tabEdit').classList.remove('active');
+            });
+
+            // Registration form submit
+            const regForm = document.getElementById('regForm');
+            if (regForm) regForm.addEventListener('submit', handleRegSubmit);
+
+            // Edit modal backdrop click
+            const overlay = document.getElementById('editModalOverlay');
+            if (overlay) overlay.addEventListener('click', function (e) {
+                if (e.target === this) closeEditModal();
+            });
+
+            // Edit email input — Enter key
+            const editEmail = document.getElementById('editLookupEmail');
+            if (editEmail) editEmail.addEventListener('keydown', e => {
+                if (e.key === 'Enter') lookupUser();
+            });
+
+        });
+
+        // ── Profession autocomplete ───────────────────────────────────────
+        const profInput = document.getElementById('profession');
+        const profDropdown = document.getElementById('professionDropdown');
+
+        if (profInput && profDropdown) {
+            profInput.addEventListener('input', function () {
+                const q = this.value.toLowerCase().trim();
+                profDropdown.innerHTML = '';
+                if (!q) { profDropdown.classList.remove('open'); return; }
+                const matches = KNOWN_PROFESSIONS.filter(p => p.toLowerCase().includes(q));
+                if (!matches.length) { profDropdown.classList.remove('open'); return; }
+                matches.slice(0, 8).forEach(p => {
+                    const div = document.createElement('div');
+                    div.className = 'dropdown-item';
+                    div.textContent = p;
+                    div.onclick = () => selectProfession(p);
+                    profDropdown.appendChild(div);
+                });
+                profDropdown.classList.add('open');
+            });
+            document.addEventListener('click', e => {
+                if (!profInput.contains(e.target) && !profDropdown.contains(e.target))
+                    profDropdown.classList.remove('open');
+            });
+            profInput.addEventListener('keydown', e => {
+                const items = profDropdown.querySelectorAll('.dropdown-item');
+                const active = profDropdown.querySelector('.dropdown-item.active');
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    const next = active ? active.nextElementSibling : items[0];
+                    if (next) { active && active.classList.remove('active'); next.classList.add('active'); }
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    const prev = active ? active.previousElementSibling : items[items.length - 1];
+                    if (prev) { active && active.classList.remove('active'); prev.classList.add('active'); }
+                } else if (e.key === 'Enter' && active) {
+                    e.preventDefault(); selectProfession(active.textContent);
+                }
+            });
+        }
+
+        async function selectProfession(profession) {
+            document.getElementById('profession').value = profession;
+            if (document.getElementById('professionDropdown'))
+                document.getElementById('professionDropdown').classList.remove('open');
+            const apiVariants = await loadVariantsFromAPI(profession);
+            if (apiVariants && apiVariants.length > 0) {
+                const list = document.getElementById('variantsList');
+                list.innerHTML = '';
+                apiVariants.forEach(v => {
+                    const row = document.createElement('div');
+                    row.className = 'variant-row';
+                    row.innerHTML = `<input type="text" name="variant" value="${v}" /><button type="button" class="remove-btn" onclick="removeVariant(this)">×</button>`;
+                    list.appendChild(row);
+                });
+                const empty = document.createElement('div');
+                empty.className = 'variant-row';
+                empty.innerHTML = `<input type="text" name="variant" placeholder="Add another variant" /><button type="button" class="remove-btn" onclick="removeVariant(this)">×</button>`;
+                list.appendChild(empty);
+            } else if (PROFESSION_VARIANTS[profession]) {
+                const list = document.getElementById('variantsList');
+                list.innerHTML = '';
+                PROFESSION_VARIANTS[profession].forEach(v => {
+                    const row = document.createElement('div');
+                    row.className = 'variant-row';
+                    row.innerHTML = `<input type="text" name="variant" value="${v}" /><button type="button" class="remove-btn" onclick="removeVariant(this)">×</button>`;
+                    list.appendChild(row);
+                });
+            }
+        }
+
+        function addVariant() {
+            const list = document.getElementById('variantsList');
+            const row = document.createElement('div');
+            row.className = 'variant-row';
+            row.innerHTML = `<input type="text" name="variant" placeholder="e.g. Senior Account Manager" /><button type="button" class="remove-btn" onclick="removeVariant(this)">×</button>`;
+            list.appendChild(row);
+            row.querySelector('input').focus();
+        }
+
+        function removeVariant(btn) {
+            const list = document.getElementById('variantsList');
+            if (list.children.length > 1) btn.closest('.variant-row').remove();
+            else btn.closest('.variant-row').querySelector('input').value = '';
+        }
+
+        async function loadProfessions() {
+            try {
+                const res = await fetch(`${API_URL}/professions`);
+                const professions = await res.json();
+                const existing = KNOWN_PROFESSIONS.map(p => p.toLowerCase());
+                professions.forEach(p => {
+                    if (!existing.includes(p.profession.toLowerCase())) {
+                        KNOWN_PROFESSIONS.push(p.profession);
+                    }
+                });
+            } catch (e) { /* use local list */ }
+        }
+        loadProfessions();
+
+        async function loadVariantsFromAPI(professionName) {
+            try {
+                const res = await fetch(`${API_URL}/professions`);
+                const professions = await res.json();
+                const match = professions.find(p => p.profession.toLowerCase() === professionName.toLowerCase());
+                if (!match) return null;
+                const vRes = await fetch(`${API_URL}/professions/${match.id}/variants`);
+                return await vRes.json();
+            } catch (e) { return null; }
+        }
+
+        // ── Registration form submit ───────────────────────────────────────
+        async function handleRegSubmit(e) {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            const errorMsg = document.getElementById('errorMsg');
+            errorMsg.style.display = 'none';
+
+            const variants = [...document.querySelectorAll('#variantsList input[name="variant"]')]
+                .map(i => i.value.trim()).filter(Boolean);
+            const websites = ['site1', 'site2', 'site3', 'site4', 'site5', 'site6']
+                .map(id => document.getElementById(id).value.trim()).filter(Boolean);
+            const frequency = [...document.querySelectorAll('input[name="frequency"]:checked')].map(c => c.value);
+            const seniority = [...document.querySelectorAll('input[name="seniority"]:checked')].map(c => c.value);
+            const companyType = [...document.querySelectorAll('input[name="companyType"]:checked')].map(c => c.value);
+            const nameVal = document.getElementById('name').value.trim();
+            const nameParts = nameVal.split(' ');
+            const firstName = nameParts[0] || '';
+            const lastName = nameParts.slice(1).join(' ') || '';
+            const email = document.getElementById('email').value.trim();
+            const profession = document.getElementById('profession').value.trim();
+            const city = [...document.getElementById('city').selectedOptions].map(o => o.value);
+            const defaultWebsites = ['linkedin.com', 'il.indeed.com', 'startupforstartup.com', 'nbn.org.il', 'jobshop.co.il', 'cruitie.com'];
+
+            if (!nameVal || !email || !profession) {
+                errorMsg.textContent = 'Please fill in name, email and job title.';
+                errorMsg.style.display = 'block'; return;
+            }
+            if (city.length === 0 || !document.getElementById('workType').value) {
+                errorMsg.textContent = 'Please select a city and work type.';
+                errorMsg.style.display = 'block'; return;
+            }
+            if (seniority.length === 0) {
+                errorMsg.textContent = 'Please select at least one seniority level.';
+                errorMsg.style.display = 'block'; return;
+            }
+            if (companyType.length === 0) {
+                errorMsg.textContent = 'Please select at least one company type.';
+                errorMsg.style.display = 'block'; return;
+            }
+            if (frequency.length === 0) {
+                errorMsg.textContent = 'Please select at least one alert time.';
+                errorMsg.style.display = 'block'; return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span>Sending…';
+
+            try {
+                const data = {
+                    first_name: firstName, last_name: lastName, email,
+                    profession, professions: [profession], variants, seniority,
+                    company_type: companyType, city,
+                    work_type: document.getElementById('workType').value,
+                    websites: websites.length ? websites : defaultWebsites,
+                    frequency,
+                };
+                const res = await fetch(`${API_URL}/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data),
+                });
+                if (res.ok) {
+                    document.querySelectorAll('.field, .divider, .section-title').forEach(el => el.style.display = 'none');
+                    btn.style.display = 'none';
+                    document.getElementById('successTitle').textContent = "You're registered!";
+                    document.getElementById('successText').textContent = "Your details have been saved. You'll receive job alerts at your chosen times.";
+                    document.getElementById('successMsg').style.display = 'block';
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    if (res.status === 409) {
+                        errorMsg.textContent = 'This email is already registered. Use "Edit My Preferences" to update.';
+                    } else {
+                        errorMsg.textContent = err.error || 'Something went wrong. Please try again.';
+                    }
+                    errorMsg.style.display = 'block';
+                    btn.disabled = false;
+                    btn.textContent = 'Send my registration →';
+                }
+            } catch {
+                errorMsg.textContent = 'Could not connect. Please try again.';
+                errorMsg.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = 'Send my registration →';
+            }
+        }
+        // ══ EDIT MODAL ════════════════════════════════════════════════════
+
+        let _editEmail = '';
+        // tag sets keyed by field name
+        const _tags = { ef_variants: new Set(), ef_seniority: new Set(), ef_company: new Set(), ef_locations: new Set() };
+
+        function openEditModal() {
+            document.getElementById('editModalOverlay').classList.add('open');
+            showEditStep1();
+            setTimeout(() => document.getElementById('editLookupEmail').focus(), 80);
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModalOverlay').classList.remove('open');
+            document.getElementById('editLookupEmail').value = '';
+            document.getElementById('editLookupError').style.display = 'none';
+            document.getElementById('editSaveStatus').textContent = '';
+            // reset tab highlight
+            document.getElementById('tabEdit').classList.remove('active');
+            document.getElementById('tabRegister').classList.add('active');
+        }
+
+        function showEditStep1() {
+            document.getElementById('editStep1').style.display = '';
+            document.getElementById('editStep2').style.display = 'none';
+        }
+
+        // Close on backdrop click
+        // editModalOverlay click handler is in DOMContentLoaded above
+
+        // ── Lookup user ───────────────────────────────────────────────────
+        async function lookupUser() {
+            const email = document.getElementById('editLookupEmail').value.trim().toLowerCase();
+            const errEl = document.getElementById('editLookupError');
+            const btn = document.getElementById('editLookupBtn');
+
+            errEl.style.display = 'none';
+            if (!email || !email.includes('@')) {
+                errEl.textContent = 'Please enter a valid email address.';
+                errEl.style.display = 'block'; return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span>Looking up…';
+
+            try {
+                const res = await fetch(`${API_URL}/user/${encodeURIComponent(email)}`, { signal: AbortSignal.timeout(15000) });
+                if (res.status === 404) {
+                    errEl.textContent = 'No account found for that email. Check the address or register first.';
+                    errEl.style.display = 'block';
+                    btn.disabled = false; btn.textContent = 'Load my profile →'; return;
+                }
+                if (!res.ok) throw new Error('Server error ' + res.status);
+
+                const data = await res.json();
+                _editEmail = email;
+                populateEditForm(data);
+                document.getElementById('editStep1').style.display = 'none';
+                document.getElementById('editStep2').style.display = '';
+
+            } catch (err) {
+                console.error('Lookup error:', err);
+                if (err.name === 'TimeoutError' || err.name === 'AbortError') {
+                    errEl.textContent = 'Server is waking up (Render cold start) — please wait 30 seconds and try again.';
+                } else {
+                    errEl.textContent = 'Could not connect to server: ' + err.message;
+                }
+                errEl.style.display = 'block';
+            } finally {
+                btn.disabled = false; btn.textContent = 'Load my profile →';
+            }
+        }
+
+        // ── Populate edit form from API data ──────────────────────────────
+        function populateEditForm(data) {
+            document.getElementById('editUserBadge').textContent = '📧 ' + _editEmail;
+            document.getElementById('ef_first_name').value = data.first_name || '';
+            document.getElementById('ef_last_name').value = data.last_name || '';
+            document.getElementById('ef_profession').value = data.profession || (data.professions || [])[0] || '';
+
+            // Work type
+            const wt = document.getElementById('ef_work_type');
+            if (data.work_type) wt.value = data.work_type;
+
+            // Tag fields
+            _tags.ef_variants = new Set(data.variants || []);
+            _tags.ef_seniority = new Set(data.seniority || []);
+            _tags.ef_company = new Set(data.company_type || data.company_types || []);
+            _tags.ef_locations = new Set(data.city || data.locations || []);
+            renderAllTags();
+
+            // Frequency checkboxes
+            const freqVals = new Set(data.frequency || data.schedule || []);
+            document.querySelectorAll('input[name="ef_freq"]').forEach(cb => {
+                cb.checked = freqVals.has(cb.value);
+            });
+        }
+
+        // ── Tag rendering helpers ─────────────────────────────────────────
+        function renderAllTags() {
+            ['ef_variants', 'ef_seniority', 'ef_company', 'ef_locations'].forEach(renderTags);
+        }
+
+        function renderTags(key) {
+            const field = document.getElementById(key + '_field');
+            const input = document.getElementById(key + '_input');
+            // remove old pills
+            field.querySelectorAll('.tag-pill').forEach(p => p.remove());
+            _tags[key].forEach(val => {
+                const pill = document.createElement('span');
+                pill.className = 'tag-pill';
+                pill.innerHTML = `${val} <span class="rm" onclick="removeTag('${key}','${val.replace(/'/g, "\'")}')">×</span>`;
+                field.insertBefore(pill, input);
+            });
+        }
+
+        function removeTag(key, val) {
+            _tags[key].delete(val);
+            renderTags(key);
+        }
+
+        function tagInputKey(event, inputId, key) {
+            if (event.key !== 'Enter' && event.key !== ',') return;
+            event.preventDefault();
+            const input = document.getElementById(inputId);
+            const val = input.value.trim().replace(/,$/, '');
+            if (!val) return;
+            _tags[key].add(val);
+            renderTags(key);
+            input.value = '';
+        }
+
+        // ── Save edited user ──────────────────────────────────────────────
+        async function saveUser() {
+            const statusEl = document.getElementById('editSaveStatus');
+            const errEl = document.getElementById('editSaveError');
+            const btn = document.getElementById('editSaveBtn');
+
+            errEl.style.display = 'none';
+            statusEl.textContent = '';
+
+            const firstName = document.getElementById('ef_first_name').value.trim();
+            const lastName = document.getElementById('ef_last_name').value.trim();
+            if (!firstName || !lastName) {
+                errEl.textContent = 'First and last name are required.';
+                errEl.style.display = 'block'; return;
+            }
+
+            const frequency = [...document.querySelectorAll('input[name="ef_freq"]:checked')].map(c => c.value);
+            if (!frequency.length) {
+                errEl.textContent = 'Please select at least one alert time.';
+                errEl.style.display = 'block'; return;
+            }
+
+            const payload = {
+                first_name: firstName,
+                last_name: lastName,
+                profession: document.getElementById('ef_profession').value.trim(),
+                professions: [document.getElementById('ef_profession').value.trim()],
+                variants: [..._tags.ef_variants],
+                seniority: [..._tags.ef_seniority],
+                company_type: [..._tags.ef_company],
+                city: [..._tags.ef_locations],
+                work_type: document.getElementById('ef_work_type').value,
+                frequency,
+            };
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span>Saving…';
+
+            try {
+                const res = await fetch(`${API_URL}/user/${encodeURIComponent(_editEmail)}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                    signal: AbortSignal.timeout(15000),
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.error || 'Server error ' + res.status);
+                }
+                statusEl.style.color = 'var(--accent)';
+                statusEl.textContent = '✓ Changes saved! Your next alert will use the updated settings.';
+                btn.disabled = false; btn.textContent = 'Save changes →';
+                setTimeout(() => closeEditModal(), 2200);
+
+            } catch (err) {
+                console.error('Save error:', err);
+                if (err.name === 'TimeoutError' || err.name === 'AbortError') {
+                    errEl.textContent = 'Request timed out — server may be waking up. Please try again.';
+                } else {
+                    errEl.textContent = 'Save failed: ' + err.message;
+                }
+                errEl.style.display = 'block';
+                btn.disabled = false; btn.textContent = 'Save changes →';
+            }
+        }
+    </script>
+
+    <!-- ══ Edit Modal Overlay ══════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="editModalOverlay">
+
+        <!-- Step 1: Email lookup -->
+        <div class="modal-box" id="editStep1">
+            <button class="modal-close" onclick="closeEditModal()">×</button>
+            <div class="modal-eyebrow">✏️ Edit Preferences</div>
+            <h2>Find your profile</h2>
+            <p class="modal-sub">Enter the email address you registered with. We'll load your current settings so you
+                can update them.</p>
+
+            <div class="modal-field">
+                <label>Registered email <span style="color:var(--accent)">*</span></label>
+                <input type="email" id="editLookupEmail" placeholder="your@email.com" autocomplete="email"
+                    onkeydown="if(event.key==='Enter')lookupUser()" />
+            </div>
+            <div class="modal-error" id="editLookupError"></div>
+
+            <div class="modal-btns">
+                <button class="btn-ghost" onclick="closeEditModal()">Cancel</button>
+                <button class="btn" id="editLookupBtn" onclick="lookupUser()" style="flex:2">Load my profile →</button>
+            </div>
+        </div>
+
+        <!-- Step 2: Edit form -->
+        <div class="modal-box wide" id="editStep2" style="display:none">
+            <button class="modal-close" onclick="closeEditModal()">×</button>
+            <div class="modal-eyebrow">✏️ Edit Preferences</div>
+            <h2>Update your settings</h2>
+            <div class="modal-user-badge" id="editUserBadge">📧 user@email.com</div>
+
+            <div class="modal-section-title">Personal Details</div>
+            <div class="modal-two-col">
+                <div class="modal-field">
+                    <label>First name</label>
+                    <input type="text" id="ef_first_name" />
+                </div>
+                <div class="modal-field">
+                    <label>Last name</label>
+                    <input type="text" id="ef_last_name" />
+                </div>
+            </div>
+
+            <div class="modal-section-title">Job Preferences</div>
+            <div class="modal-field">
+                <label>Main job title</label>
+                <input type="text" id="ef_profession" placeholder="e.g. Customer Success Manager" />
+            </div>
+            <div class="modal-field">
+                <label>Title variants <span style="font-weight:300;text-transform:none;letter-spacing:0">(press Enter to
+                        add)</span></label>
+                <div class="tag-field" id="ef_variants_field">
+                    <input type="text" class="tag-add-input" id="ef_variants_input" placeholder="Add a variant…"
+                        onkeydown="tagInputKey(event,'ef_variants_input','ef_variants')" />
+                </div>
+            </div>
+
+            <div class="modal-field">
+                <label>Seniority levels <span style="font-weight:300;text-transform:none;letter-spacing:0">(press Enter
+                        to add)</span></label>
+                <div class="tag-field" id="ef_seniority_field">
+                    <input type="text" class="tag-add-input" id="ef_seniority_input" placeholder="e.g. Senior, Junior…"
+                        onkeydown="tagInputKey(event,'ef_seniority_input','ef_seniority')" />
+                </div>
+            </div>
+
+            <div class="modal-field">
+                <label>Company types <span style="font-weight:300;text-transform:none;letter-spacing:0">(press Enter to
+                        add)</span></label>
+                <div class="tag-field" id="ef_company_field">
+                    <input type="text" class="tag-add-input" id="ef_company_input" placeholder="e.g. B2B, B2C…"
+                        onkeydown="tagInputKey(event,'ef_company_input','ef_company')" />
+                </div>
+            </div>
+
+            <div class="modal-section-title">Location</div>
+            <div class="modal-field">
+                <label>Cities <span style="font-weight:300;text-transform:none;letter-spacing:0">(press Enter to
+                        add)</span></label>
+                <div class="tag-field" id="ef_locations_field">
+                    <input type="text" class="tag-add-input" id="ef_locations_input" placeholder="e.g. Tel Aviv…"
+                        onkeydown="tagInputKey(event,'ef_locations_input','ef_locations')" />
+                </div>
+            </div>
+            <div class="modal-field">
+                <label>Work type</label>
+                <select id="ef_work_type">
+                    <option value="On-site">On-site</option>
+                    <option value="Hybrid">Hybrid</option>
+                    <option value="Remote">Remote</option>
+                    <option value="Remote or Hybrid">Remote or Hybrid</option>
+                    <option value="Any">Any (no preference)</option>
+                </select>
+            </div>
+
+            <div class="modal-section-title">Alert Schedule</div>
+            <div class="modal-field">
+                <label>Notification times</label>
+                <div class="chip-group" id="ef_frequency_chips">
+                    <label class="chip"><input type="checkbox" name="ef_freq" value="08:00" /> 8:00 AM</label>
+                    <label class="chip"><input type="checkbox" name="ef_freq" value="12:00" /> 12:00 PM</label>
+                    <label class="chip"><input type="checkbox" name="ef_freq" value="17:00" /> 5:00 PM</label>
+                    <label class="chip"><input type="checkbox" name="ef_freq" value="21:00" /> 9:00 PM</label>
+                </div>
+            </div>
+
+            <div class="modal-error" id="editSaveError"></div>
+
+            <div class="modal-btns">
+                <button class="btn-ghost" onclick="showEditStep1()">← Back</button>
+                <button class="btn-ghost" onclick="closeEditModal()">Cancel</button>
+                <button class="btn" id="editSaveBtn" onclick="saveUser()" style="flex:2">Save changes →</button>
+            </div>
+            <div class="save-status" id="editSaveStatus"></div>
+        </div>
+
+    </div>
+
+</body>
+
+</html>

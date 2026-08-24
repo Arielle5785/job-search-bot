@@ -1,0 +1,564 @@
+"""
+Job Search Bot — Flask API
+Deployed on Render. Connects to Neon Postgres.
+Routes:
+  GET  /health              — health check
+  GET  /professions         — list all professions (for autocomplete)
+  GET  /professions/<id>/variants — variants for a profession
+  POST /register            — register a new user
+  PUT  /user/<email>        — update existing user
+  GET  /user/<email>        — get user data (for edit form)
+"""
+
+import os
+import secrets
+import datetime
+import smtplib
+import psycopg2
+import psycopg2.extras
+from email.mime.text import MIMEText
+from functools import wraps
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+from dotenv import load_dotenv
+
+load_dotenv()
+
+app = Flask(__name__)
+CORS(app)  # allow requests from your index.html form
+
+
+# ── DB connection ─────────────────────────────────────────────
+
+def get_db():
+    return psycopg2.connect(
+        os.environ["DATABASE_URL"],
+        cursor_factory=psycopg2.extras.RealDictCursor
+    )
+
+
+# ── Health check ──────────────────────────────────────────────
+
+@app.route("/health")
+def health():
+    return jsonify({"status": "ok"})
+
+
+# ── Auth: token decorator ─────────────────────────────────────
+
+def require_edit_token(f):
+    """
+    Decorator for GET /user and PUT /user.
+    Checks X-Edit-Token header — returns 401 if missing, wrong, or expired.
+    """
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.headers.get("X-Edit-Token", "").strip()
+        email = kwargs.get("email", "").lower().strip()
+        if not token or not email:
+            return jsonify({"error": "Unauthorized"}), 401
+        try:
+            conn = get_db()
+            cur  = conn.cursor()
+            cur.execute(
+                "SELECT edit_token, edit_token_exp FROM user_t WHERE email = %s",
+                (email,)
+            )
+            row = cur.fetchone()
+            cur.close()
+            conn.close()
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+        if not row:
+            return jsonify({"error": "Not found"}), 404
+        stored = row["edit_token"] or ""
+        exp    = row["edit_token_exp"]
+        now    = datetime.datetime.now(datetime.timezone.utc)
+        if not secrets.compare_digest(stored, token):
+            return jsonify({"error": "Unauthorized"}), 401
+        if exp is None or now > exp:
+            return jsonify({"error": "Token expired — please verify again"}), 401
+        return f(*args, **kwargs)
+    return decorated
+
+
+def _send_verification_email(to_email: str, code: str):
+    """Send a 6-digit verification code by email."""
+    sender   = os.environ.get("EMAIL_FROM")
+    password = os.environ.get("EMAIL_PASSWORD")
+    if not sender or not password:
+        raise RuntimeError("EMAIL_FROM or EMAIL_PASSWORD not set")
+    body = (
+        f"Your Job Bot verification code is: {code}\n\n"
+        "It expires in 15 minutes.\n"
+        "If you didn't request this, ignore this email."
+    )
+    msg = MIMEText(body)
+    msg["Subject"] = "Your Job Bot verification code"
+    msg["From"]    = sender
+    msg["To"]      = to_email
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+        smtp.login(sender, password)
+        smtp.send_message(msg)
+
+
+# ── POST /auth/request-code ───────────────────────────────────
+
+@app.route("/auth/request-code", methods=["POST"])
+def request_code():
+    """Send a 6-digit verification code to the user's registered email."""
+    data  = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+    if not email or "@" not in email:
+        return jsonify({"error": "Valid email required"}), 400
+    try:
+        conn = get_db()
+        cur  = conn.cursor()
+        cur.execute(
+            "SELECT id FROM user_t WHERE email = %s AND is_active = TRUE",
+            (email,)
+        )
+        if not cur.fetchone():
+            cur.close()
+            conn.close()
+            return jsonify({"error": "Not found"}), 404
+        code     = str(secrets.randbelow(900000) + 100000)   # always 6 digits
+        code_exp = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=15)
+        cur.execute(
+            "UPDATE user_t SET auth_code = %s, auth_code_exp = %s WHERE email = %s",
+            (code, code_exp, email)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    try:
+        _send_verification_email(email, code)
+    except Exception as e:
+        print(f"  [auth] Failed to send code to {email}: {e}")
+        return jsonify({"error": "Could not send verification email"}), 500
+    return jsonify({"ok": True}), 200
+
+
+# ── POST /auth/verify-code ────────────────────────────────────
+
+@app.route("/auth/verify-code", methods=["POST"])
+def verify_code():
+    """Validate the 6-digit code and return a short-lived edit token."""
+    data  = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+    code  = (data.get("code")  or "").strip()
+    if not email or not code:
+        return jsonify({"error": "Email and code required"}), 400
+    try:
+        conn = get_db()
+        cur  = conn.cursor()
+        cur.execute(
+            "SELECT auth_code, auth_code_exp FROM user_t WHERE email = %s",
+            (email,)
+        )
+        row = cur.fetchone()
+        if not row:
+            cur.close()
+            conn.close()
+            return jsonify({"error": "Not found"}), 404
+        stored_code = row["auth_code"] or ""
+        code_exp    = row["auth_code_exp"]
+        now         = datetime.datetime.now(datetime.timezone.utc)
+        if not secrets.compare_digest(stored_code, code):
+            cur.close()
+            conn.close()
+            return jsonify({"error": "Invalid code"}), 401
+        if code_exp is None or now > code_exp:
+            cur.close()
+            conn.close()
+            return jsonify({"error": "Code expired"}), 401
+        # Issue a 1-hour edit token, clear the one-time code
+        token     = secrets.token_hex(32)
+        token_exp = now + datetime.timedelta(hours=1)
+        cur.execute(
+            """UPDATE user_t
+               SET auth_code = NULL, auth_code_exp = NULL,
+                   edit_token = %s, edit_token_exp = %s
+               WHERE email = %s""",
+            (token, token_exp, email)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    return jsonify({"token": token}), 200
+
+
+# ── GET /professions ──────────────────────────────────────────
+
+@app.route("/professions")
+def get_professions():
+    """Return all professions for autocomplete dropdown."""
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("SELECT id, profession FROM profession_t ORDER BY profession")
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        return jsonify([dict(r) for r in rows])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ── GET /professions/<id>/variants ────────────────────────────
+
+@app.route("/professions/<int:profession_id>/variants")
+def get_variants(profession_id):
+    """Return known variants for a given profession."""
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT variant FROM variant_t WHERE profession_id = %s ORDER BY variant",
+            (profession_id,)
+        )
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        return jsonify([r["variant"] for r in rows])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ── GET /user/<email> ─────────────────────────────────────────
+
+@app.route("/user/<email>")
+@require_edit_token
+def get_user(email):
+    """Return a user's full data for the edit form — requires valid X-Edit-Token."""
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM v_users WHERE email = %s", (email.lower(),))
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        if not row:
+            return jsonify({"error": "User not found"}), 404
+        return jsonify(dict(row))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ── Admin alert ───────────────────────────────────────────────
+
+def notify_new_registration(first_name: str, last_name: str, email: str, profession: str):
+    """Send a quick email to the admin when a new user registers."""
+    sender   = os.environ.get("EMAIL_FROM")
+    password = os.environ.get("EMAIL_PASSWORD")
+    admin    = os.environ.get("ADMIN_EMAIL") or sender  # falls back to sender
+
+    missing = [k for k, v in {"EMAIL_FROM": sender, "EMAIL_PASSWORD": password, "ADMIN_EMAIL (or EMAIL_FROM)": admin}.items() if not v]
+    if missing:
+        print(f"  [alert] Skipping admin notification — missing env vars: {', '.join(missing)}")
+        return
+
+    try:
+        body = (
+            f"New registration on the Job Search Bot!\n\n"
+            f"Name:       {first_name} {last_name}\n"
+            f"Email:      {email}\n"
+            f"Profession: {profession}\n"
+        )
+        msg = MIMEText(body)
+        msg["Subject"] = f"New user: {first_name} {last_name}"
+        msg["From"]    = sender
+        msg["To"]      = admin
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(sender, password)
+            server.sendmail(sender, admin, msg.as_string())
+
+        print(f"  [alert] ✅ Admin notified about new user: {email} → sent to {admin}")
+    except smtplib.SMTPAuthenticationError:
+        print(f"  [alert] ❌ SMTP auth failed — check EMAIL_FROM and EMAIL_PASSWORD (use App Password, not account password)")
+    except smtplib.SMTPException as e:
+        print(f"  [alert] ❌ SMTP error: {e}")
+    except Exception as e:
+        print(f"  [alert] ❌ Unexpected error sending admin notification: {e}")
+
+
+# ── POST /register ────────────────────────────────────────────
+
+@app.route("/register", methods=["POST"])
+def register():
+    """Register a new user from the form."""
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No JSON body"}), 400
+
+    required = ["first_name", "last_name", "email", "profession"]
+    for field in required:
+        if not data.get(field):
+            return jsonify({"error": f"Missing required field: {field}"}), 400
+
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+
+        email = data["email"].lower().strip()
+
+        # Check duplicate
+        cur.execute("SELECT id FROM user_t WHERE email = %s", (email,))
+        if cur.fetchone():
+            cur.close()
+            conn.close()
+            return jsonify({"error": "Email already registered"}), 409
+
+        # Work type
+        work_type_id = _get_or_none(cur, "work_type_t", "work_type", data.get("work_type"))
+
+        # Insert user
+        cur.execute(
+            """INSERT INTO user_t (first_name, last_name, email, work_type_id)
+               VALUES (%s, %s, %s, %s) RETURNING id""",
+            (
+                data["first_name"].strip().title(),
+                data["last_name"].strip().title(),
+                email,
+                work_type_id,
+            )
+        )
+        user_id = cur.fetchone()["id"]
+
+        # Professions (list, ordered by priority)
+        professions = data.get("professions") or [data.get("profession")]
+        professions = [p for p in professions if p]
+        for i, prof_name in enumerate(professions[:3]):
+            prof_id = _get_or_create_profession(cur, prof_name)
+            cur.execute(
+                """INSERT INTO user_profession_t (user_id, profession_id, priority)
+                   VALUES (%s, %s, %s) ON CONFLICT DO NOTHING""",
+                (user_id, prof_id, i + 1)
+            )
+
+        # Variants (free text)
+        for variant in (data.get("variants") or []):
+            if variant.strip():
+                cur.execute(
+                    """INSERT INTO user_variant_t (user_id, variant)
+                       VALUES (%s, %s) ON CONFLICT DO NOTHING""",
+                    (user_id, variant.strip())
+                )
+
+        # Seniority
+        _insert_junction_lookup(cur, user_id, "seniority_t", "seniority",
+                                 "user_seniority_t", "seniority_id",
+                                 data.get("seniority") or [])
+
+        # Company type
+        _insert_junction_lookup(cur, user_id, "company_type_t", "company_type",
+                                 "user_company_type_t", "company_type_id",
+                                 data.get("company_type") or [])
+
+        # Cities
+        for city_name in (data.get("city") or []):
+            cur.execute("SELECT id FROM location_t WHERE city = %s", (city_name,))
+            row = cur.fetchone()
+            if row:
+                cur.execute(
+                    """INSERT INTO user_location_t (user_id, location_id)
+                       VALUES (%s, %s) ON CONFLICT DO NOTHING""",
+                    (user_id, row["id"])
+                )
+
+        # Websites
+        for website in (data.get("websites") or []):
+            cur.execute("SELECT id FROM website_t WHERE website = %s", (website,))
+            row = cur.fetchone()
+            if row:
+                cur.execute(
+                    """INSERT INTO user_website_t (user_id, website_id)
+                       VALUES (%s, %s) ON CONFLICT DO NOTHING""",
+                    (user_id, row["id"])
+                )
+
+        # Frequency
+        for slot in (data.get("frequency") or []):
+            cur.execute("SELECT id FROM frequency_t WHERE time_slot = %s", (slot,))
+            row = cur.fetchone()
+            if row:
+                cur.execute(
+                    """INSERT INTO user_frequency_t (user_id, frequency_id)
+                       VALUES (%s, %s) ON CONFLICT DO NOTHING""",
+                    (user_id, row["id"])
+                )
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        # Notify admin about the new registration
+        notify_new_registration(
+            data["first_name"].strip().title(),
+            data["last_name"].strip().title(),
+            email,
+            professions[0] if professions else data.get("profession", "")
+        )
+
+        return jsonify({"message": "User registered successfully", "user_id": user_id}), 201
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ── PUT /user/<email> ─────────────────────────────────────────
+
+@app.route("/user/<email>", methods=["PUT"])
+@require_edit_token
+def update_user(email):
+    """Update an existing user — requires valid X-Edit-Token."""
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No JSON body"}), 400
+
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+
+        email = email.lower().strip()
+        cur.execute("SELECT id FROM user_t WHERE email = %s", (email,))
+        row = cur.fetchone()
+        if not row:
+            cur.close()
+            conn.close()
+            return jsonify({"error": "User not found"}), 404
+
+        user_id = row["id"]
+
+        # Update core fields
+        work_type_id = _get_or_none(cur, "work_type_t", "work_type", data.get("work_type"))
+        cur.execute(
+            """UPDATE user_t SET
+                first_name   = COALESCE(%s, first_name),
+                last_name    = COALESCE(%s, last_name),
+                work_type_id = COALESCE(%s, work_type_id)
+               WHERE id = %s""",
+            (
+                data.get("first_name", "").strip().title() or None,
+                data.get("last_name", "").strip().title() or None,
+                work_type_id,
+                user_id,
+            )
+        )
+
+        # Clear and re-insert junction tables
+        for table in [
+            "user_profession_t", "user_variant_t", "user_seniority_t",
+            "user_company_type_t", "user_location_t", "user_website_t", "user_frequency_t"
+        ]:
+            cur.execute(f"DELETE FROM {table} WHERE user_id = %s", (user_id,))
+
+        # Re-insert everything (same logic as register)
+        professions = data.get("professions") or [data.get("profession")]
+        professions = [p for p in professions if p]
+        for i, prof_name in enumerate(professions[:3]):
+            prof_id = _get_or_create_profession(cur, prof_name)
+            cur.execute(
+                """INSERT INTO user_profession_t (user_id, profession_id, priority)
+                   VALUES (%s, %s, %s) ON CONFLICT DO NOTHING""",
+                (user_id, prof_id, i + 1)
+            )
+
+        for variant in (data.get("variants") or []):
+            if variant.strip():
+                cur.execute(
+                    "INSERT INTO user_variant_t (user_id, variant) VALUES (%s, %s) ON CONFLICT DO NOTHING",
+                    (user_id, variant.strip())
+                )
+
+        _insert_junction_lookup(cur, user_id, "seniority_t", "seniority",
+                                 "user_seniority_t", "seniority_id",
+                                 data.get("seniority") or [])
+
+        _insert_junction_lookup(cur, user_id, "company_type_t", "company_type",
+                                 "user_company_type_t", "company_type_id",
+                                 data.get("company_type") or [])
+
+        for city_name in (data.get("city") or []):
+            cur.execute("SELECT id FROM location_t WHERE city = %s", (city_name,))
+            r = cur.fetchone()
+            if r:
+                cur.execute(
+                    "INSERT INTO user_location_t (user_id, location_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
+                    (user_id, r["id"])
+                )
+
+        for website in (data.get("websites") or []):
+            cur.execute("SELECT id FROM website_t WHERE website = %s", (website,))
+            r = cur.fetchone()
+            if r:
+                cur.execute(
+                    "INSERT INTO user_website_t (user_id, website_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
+                    (user_id, r["id"])
+                )
+
+        for slot in (data.get("frequency") or []):
+            cur.execute("SELECT id FROM frequency_t WHERE time_slot = %s", (slot,))
+            r = cur.fetchone()
+            if r:
+                cur.execute(
+                    "INSERT INTO user_frequency_t (user_id, frequency_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
+                    (user_id, r["id"])
+                )
+
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({"message": "User updated successfully"})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ── Helpers ───────────────────────────────────────────────────
+
+def _get_or_none(cur, table, column, value):
+    """Return the ID of a lookup row, or None if value is empty."""
+    if not value:
+        return None
+    cur.execute(f"SELECT id FROM {table} WHERE {column} = %s", (value,))
+    row = cur.fetchone()
+    return row["id"] if row else None
+
+
+def _get_or_create_profession(cur, profession_name: str) -> int:
+    """Get or insert a profession (Title Case). Also returns its ID."""
+    name = profession_name.strip().title()
+    cur.execute("SELECT id FROM profession_t WHERE profession = %s", (name,))
+    row = cur.fetchone()
+    if row:
+        return row["id"]
+    cur.execute(
+        "INSERT INTO profession_t (profession) VALUES (%s) RETURNING id", (name,)
+    )
+    return cur.fetchone()["id"]
+
+
+def _insert_junction_lookup(cur, user_id, lookup_table, lookup_col,
+                             junction_table, fk_col, values: list):
+    """Generic helper to insert many-to-many rows for lookup tables."""
+    for val in values:
+        cur.execute(f"SELECT id FROM {lookup_table} WHERE {lookup_col} = %s", (val,))
+        row = cur.fetchone()
+        if row:
+            cur.execute(
+                f"INSERT INTO {junction_table} (user_id, {fk_col}) VALUES (%s, %s) ON CONFLICT DO NOTHING",
+                (user_id, row["id"])
+            )
+
+
+# ── Run ───────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
