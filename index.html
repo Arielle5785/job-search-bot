@@ -865,8 +865,7 @@
                 <div class="section-title">Job Boards to Search</div>
 
                 <div class="field">
-                    <p class="hint" style="margin-bottom:12px;">Enter up to 6 websites. Leave blank to use the defaults:
-                        LinkedIn, Indeed IL, StartupForStartup, Nefesh B'Nefesh, JobShop, Cruitie.</p>
+                    <p class="hint" style="margin-bottom:12px;">Active sources: LinkedIn, StartupForStartup, Nefesh B'Nefesh, and JobShop. Leave blank to use all four.</p>
                     <div class="websites-grid">
                         <div class="site-wrap">
                             <span class="site-num">1</span>
@@ -874,23 +873,15 @@
                         </div>
                         <div class="site-wrap">
                             <span class="site-num">2</span>
-                            <input type="text" id="site2" placeholder="indeed.com" />
+                            <input type="text" id="site2" placeholder="startupforstartup.com" />
                         </div>
                         <div class="site-wrap">
                             <span class="site-num">3</span>
-                            <input type="text" id="site3" placeholder="startupforstartup.com" />
+                            <input type="text" id="site3" placeholder="nbn.org.il" />
                         </div>
                         <div class="site-wrap">
                             <span class="site-num">4</span>
-                            <input type="text" id="site4" placeholder="nbn.org.il" />
-                        </div>
-                        <div class="site-wrap">
-                            <span class="site-num">5</span>
-                            <input type="text" id="site5" placeholder="jobshop.co.il" />
-                        </div>
-                        <div class="site-wrap">
-                            <span class="site-num">6</span>
-                            <input type="text" id="site6" placeholder="cruitie.com" value="cruitie.com" />
+                            <input type="text" id="site4" placeholder="jobshop.co.il" />
                         </div>
                     </div>
                 </div>
@@ -1115,7 +1106,7 @@
             const email = document.getElementById('email').value.trim();
             const profession = document.getElementById('profession').value.trim();
             const city = [...document.getElementById('city').selectedOptions].map(o => o.value);
-            const defaultWebsites = ['linkedin.com', 'il.indeed.com', 'startupforstartup.com', 'nbn.org.il', 'jobshop.co.il', 'cruitie.com'];
+            const defaultWebsites = ['linkedin.com', 'startupforstartup.com', 'nbn.org.il', 'jobshop.co.il'];
 
             if (!nameVal || !email || !profession) {
                 errorMsg.textContent = 'Please fill in name, email and job title.';

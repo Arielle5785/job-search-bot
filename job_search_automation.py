@@ -3,13 +3,15 @@ Job Search Automation — Multi-User
 =============================================================
 100% free. No RSS. No Apify. No paid APIs.
 
-Sources scraped (BeautifulSoup + requests / Selenium):
-  - StartupForStartup  (startupforstartup.com)
+Active sources (Aug 2026):
+  - StartupForStartup  (startupforstartup.com) — scrape once, ignores search
   - Nefesh B'Nefesh    (nbn.org.il)
   - JobShop            (jobshop.co.il)
   - LinkedIn           (best-effort, graceful fail if blocked)
-  - Indeed IL          (il.indeed.com)
-  - Cruitie            (cruitie.com, Israel-only)
+  - Indeed IL          (capped — Cloudflare blocks GitHub Actions IPs)
+
+Disabled sources:
+  - Cruitie            (cruitie.com) — JS-rendered, returns 0 results
 
 MULTI-USER SETUP
   Add USERS_JSON to GitHub Secrets (Settings > Secrets > Actions):
@@ -194,7 +196,7 @@ EXCLUDE_KEYWORDS = [
 
 # Israel-only boards — skip the location gate for these
 ISRAEL_NATIVE_SOURCES = {
-    "startupforstartup", "lastartup", "jobshop", "nefesh b'nefesh", "indeed il", "cruitie"
+    "startupforstartup", "lastartup", "jobshop", "nefesh b'nefesh", "indeed il"
 }
 
 
@@ -302,20 +304,72 @@ def passes_filters(job: dict, title_variants: list, user: dict, debug: bool = Fa
 
 
 # =============================================================================
-# 4. DEDUPLICATION CACHE (per user)
+# 4. DEDUPLICATION CACHE (per user) — DB-backed, no PII in filenames
 # =============================================================================
+# Primary: seen_jobs table in Neon DB (auto-created on first run).
+# Fallback: local JSON file named after a SHA-256 hash of the email —
+#           never the email itself. Add seen_jobs_cache_*.json to .gitignore.
 
-def get_cache_file(user_email: str) -> str:
-    """Return a cache file path unique to each user."""
-    safe_email = re.sub(r"[^\w]", "_", user_email)
+def _email_hash(user_email: str) -> str:
+    """Opaque hash of email — used only for fallback filenames."""
+    return hashlib.sha256(user_email.lower().encode()).hexdigest()[:16]
+
+
+def _get_fallback_cache_file(user_email: str) -> str:
     return os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
-        f"seen_jobs_cache_{safe_email}.json"
+        f"seen_jobs_cache_{_email_hash(user_email)}.json",
     )
 
 
+# Module-level DB connection — shared across all cache calls in one run.
+_db_conn_cache  = None
+_db_conn_tried  = False
+
+
+def _get_cache_db():
+    global _db_conn_cache, _db_conn_tried
+    if _db_conn_tried:
+        return _db_conn_cache
+    _db_conn_tried = True
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        return None
+    try:
+        import psycopg2
+        _db_conn_cache = psycopg2.connect(database_url)
+        cur = _db_conn_cache.cursor()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS seen_jobs (
+                user_email TEXT NOT NULL,
+                job_id     TEXT NOT NULL,
+                seen_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                PRIMARY KEY (user_email, job_id)
+            )
+        """)
+        _db_conn_cache.commit()
+        cur.close()
+        print("  [cache] Using Neon DB for seen-jobs deduplication")
+    except Exception as e:
+        print(f"  [!] Cache DB connect failed: {e} — using file fallback")
+        _db_conn_cache = None
+    return _db_conn_cache
+
+
 def load_cache(user_email: str) -> set:
-    cache_file = get_cache_file(user_email)
+    conn = _get_cache_db()
+    if conn:
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT job_id FROM seen_jobs WHERE user_email = %s",
+                        (user_email.lower(),))
+            rows = cur.fetchall()
+            cur.close()
+            return {r[0] for r in rows}
+        except Exception as e:
+            print(f"  [!] Cache DB read error: {e}")
+    # File fallback — hashed filename, no PII
+    cache_file = _get_fallback_cache_file(user_email)
     if os.path.exists(cache_file):
         try:
             with open(cache_file, "r", encoding="utf-8") as f:
@@ -323,17 +377,38 @@ def load_cache(user_email: str) -> set:
                 if isinstance(data, list):
                     return set(data)
         except (json.JSONDecodeError, IOError):
-            print(f"  [!] Cache corrupted for {user_email} — starting fresh")
+            print(f"  [!] Cache file corrupted — starting fresh")
     return set()
 
 
-def save_cache(user_email: str, seen_ids: set):
-    cache_file = get_cache_file(user_email)
+def save_cache(user_email: str, seen_ids: set, new_ids: set = None):
+    """Persist seen job IDs. DB only inserts the delta (new_ids)."""
+    conn = _get_cache_db()
+    if conn:
+        ids_to_insert = new_ids if new_ids is not None else seen_ids
+        if not ids_to_insert:
+            return
+        try:
+            import psycopg2.extras
+            cur = conn.cursor()
+            psycopg2.extras.execute_values(
+                cur,
+                "INSERT INTO seen_jobs (user_email, job_id) VALUES %s ON CONFLICT DO NOTHING",
+                [(user_email.lower(), jid) for jid in ids_to_insert],
+            )
+            conn.commit()
+            cur.close()
+        except Exception as e:
+            print(f"  [!] Cache DB write error: {e}")
+            conn.rollback()
+        return
+    # File fallback
+    cache_file = _get_fallback_cache_file(user_email)
     try:
         with open(cache_file, "w", encoding="utf-8") as f:
             json.dump(sorted(list(seen_ids)), f, indent=2)
     except IOError as e:
-        print(f"  [!] Could not save cache for {user_email}: {e}")
+        print(f"  [!] Could not save cache file: {e}")
 
 
 def make_job_id(job: dict) -> str:
@@ -451,7 +526,7 @@ def fetch_startup_for_startup(search_terms: list) -> list:
                     if title and url_full:
                         jobs.append({
                             "title": title, "company": company,
-                            "location": "Tel Aviv, Israel", "url": url_full,
+                            "location": "Israel", "url": url_full,
                             "description": "", "source": SOURCE,
                             "posted_date": posted_date,
                         })
@@ -527,7 +602,7 @@ def fetch_nefesh_bnefesh(search_terms: list) -> list:
                     if title and href:
                         jobs.append({
                             "title": title, "company": company,
-                            "location": "Tel Aviv, Israel", "url": url_full,
+                            "location": "Israel", "url": url_full,
                             "description": "", "source": SOURCE,
                             "posted_date": posted_date,
                         })
@@ -600,7 +675,7 @@ def fetch_jobshop(search_terms: list) -> list:
                     if title and href:
                         jobs.append({
                             "title": title, "company": company,
-                            "location": "Tel Aviv, Israel", "url": href,
+                            "location": "Israel", "url": href,
                             "description": "", "source": SOURCE,
                         })
                         valid_count += 1
@@ -633,12 +708,15 @@ def fetch_jobshop(search_terms: list) -> list:
 def fetch_linkedin(search_terms: list) -> list:
     SOURCE = "LinkedIn"
     jobs   = []
+    # Location is configurable via env — defaults to Israel (broad)
+    li_location = os.getenv("LINKEDIN_LOCATION", "Israel")
+    li_location_encoded = requests.utils.quote(li_location)
 
     for term in search_terms[:3]:  # cap LinkedIn queries
         encoded = requests.utils.quote(term)
         url = (
             f"https://www.linkedin.com/jobs/search/"
-            f"?keywords={encoded}&location=Tel+Aviv%2C+Israel&sortBy=DD"
+            f"?keywords={encoded}&location={li_location_encoded}&sortBy=DD"
         )
         soup = safe_get(url, SOURCE)
         if not soup:
@@ -664,7 +742,7 @@ def fetch_linkedin(search_terms: list) -> list:
                 if title and href:
                     jobs.append({
                         "title": title, "company": company,
-                        "location": "Tel Aviv, Israel", "url": href,
+                        "location": "Israel", "url": href,
                         "description": "", "source": SOURCE,
                     })
             except Exception:
@@ -686,10 +764,12 @@ def fetch_indeed(search_terms: list) -> list:
 
     try:
         driver = get_selenium_driver()
+        indeed_location = os.getenv("INDEED_LOCATION", "Israel")
+        indeed_location_encoded = requests.utils.quote(indeed_location)
 
         for term in search_terms:
             encoded = requests.utils.quote(term)
-            url = f"{BASE_URL}/jobs?q={encoded}&l=Tel+Aviv"
+            url = f"{BASE_URL}/jobs?q={encoded}&l={indeed_location_encoded}"
             timed_out = False
             try:
                 driver.get(url)
@@ -733,7 +813,7 @@ def fetch_indeed(search_terms: list) -> list:
                         "div[data-testid='text-location'], "
                         "[class*='companyLocation']"
                     )
-                    location = loc_el.get_text(strip=True) if loc_el else "Tel Aviv, Israel"
+                    location = loc_el.get_text(strip=True) if loc_el else "Israel"
 
                     date_el = card.select_one(
                         "span[data-testid='myJobsStateDate'], span.date, span[class*='date']"
@@ -748,7 +828,7 @@ def fetch_indeed(search_terms: list) -> list:
                     if title and href:
                         jobs.append({
                             "title": title, "company": company,
-                            "location": location or "Tel Aviv, Israel",
+                            "location": location or "Israel",
                             "url": href, "description": "",
                             "source": SOURCE, "posted_date": posted_date,
                         })
@@ -916,29 +996,32 @@ def fetch_cruitie(search_terms: list) -> list:
 
 def fetch_all_sources(search_terms: list, users: list = None) -> list:
     """
-    Scrape all sources. LinkedIn is scraped per-user (3 terms each) so every
-    user's profession gets queried — not just the first user's terms in the
-    merged list. All other sources use the full merged search_terms.
+    Scrape all active sources. Sources status Aug 2026:
+    - StartupForStartup: ignores search query, always returns same 11 cards → scrape once
+    - Nefesh B'Nefesh:   working ✓
+    - JobShop:           working ✓
+    - Indeed IL:         Cloudflare-blocked on GitHub Actions → cap to 5 terms
+    - Cruitie:           fully JS-rendered, returns 0 results → DISABLED
+    - LinkedIn:          working best-effort ✓ (per-user queries)
     """
     print("\nScraping sources:")
     all_jobs = []
-    # StartupForStartup ignores search query — same 11 cards every time, scrape once
+
+    # StartupForStartup ignores the query — scrape once only
     all_jobs += fetch_startup_for_startup(search_terms[:1])
     all_jobs += fetch_nefesh_bnefesh(search_terms)
     all_jobs += fetch_jobshop(search_terms)
-    # Indeed IL blocked by Cloudflare on GitHub Actions — cap to 5 terms to save time
+    # Indeed IL: blocked by Cloudflare on GitHub Actions — cap to save time
     all_jobs += fetch_indeed(search_terms[:5])
-    # Cruitie disabled — fully JS-rendered, returns 0 results (Aug 2026)
+    # Cruitie: DISABLED — fully JS-rendered, 0 results for all terms (Aug 2026)
     # all_jobs += fetch_cruitie(search_terms)
 
-    # LinkedIn: query per-user so every profession gets coverage
+    # LinkedIn: per-user queries so every profession is covered
     if users:
-        linkedin_seen = set()
+        linkedin_seen  = set()
         linkedin_total = 0
         for u in users:
-            user_terms = build_search_terms(
-                u.get("profession", ""), ["english"], u.get("variants", [])
-            )
+            user_terms   = build_search_terms(u.get("profession", ""), ["english"], u.get("variants", []))
             user_linkedin = fetch_linkedin(user_terms[:3])
             for j in user_linkedin:
                 k = make_job_id(j)
@@ -963,7 +1046,6 @@ SOURCE_COLORS = {
     "JobShop":           "#fef9c3",
     "LinkedIn":          "#dbeafe",
     "Indeed IL":         "#dcfce7",
-    "Cruitie":           "#ede9fe",
 }
 
 
@@ -1052,7 +1134,7 @@ def build_email_html(new_jobs: list, user: dict) -> str:
   {body}
   <p style="color:#ccc;font-size:11px;margin-top:24px;
             border-top:1px solid #f0f0f0;padding-top:12px;">
-    Your job search bot &middot; runs weekdays at 10am Israel time
+    Your job search bot &middot; runs Sun–Fri at your chosen times
     &middot; Reply to unsubscribe
   </p>
 </body>
@@ -1224,9 +1306,9 @@ def main():
 
         print(f"New today for {name}: {len(new_jobs)}")
 
-        # Update cache
+        # Update cache — only write new_ids to DB (delta, not full set)
         seen_ids.update(new_ids)
-        save_cache(user["email"], seen_ids)
+        save_cache(user["email"], seen_ids, new_ids=new_ids)
 
         # Send email
         send_email(new_jobs, user)
